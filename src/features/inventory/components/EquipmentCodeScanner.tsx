@@ -6,11 +6,19 @@ type ScannerControls = {
 }
 
 type EquipmentCodeScannerProps = {
+  eyebrow: string
+  title: string
+  description: string
+  scanningMessage: string
   onDetected: (rawText: string) => void
   onClose: () => void
 }
 
 export function EquipmentCodeScanner({
+  eyebrow,
+  title,
+  description,
+  scanningMessage,
   onDetected,
   onClose,
 }: EquipmentCodeScannerProps) {
@@ -118,18 +126,14 @@ export function EquipmentCodeScanner({
     <article className="rounded-2xl border border-[#ffda00] bg-[#fff8d6] p-6 shadow-sm">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
         <div>
-          <p className="text-sm font-medium text-[#5d4a00]">
-            Smart Inventory Capture
-          </p>
+          <p className="text-sm font-medium text-[#5d4a00]">{eyebrow}</p>
 
           <h3 className="mt-1 text-xl font-semibold text-[#171717]">
-            Scan Axis Box Code
+            {title}
           </h3>
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[#5d4a00]">
-            Point the camera at the QR code, Data Matrix, or barcode on the
-            product box. The system will analyze the decoded content and try to
-            identify part number, serial number and catalog information.
+            {description}
           </p>
         </div>
 
@@ -166,7 +170,7 @@ export function EquipmentCodeScanner({
           {scannerStatus === 'scanning' && (
             <div className="mt-3">
               <p className="text-sm font-semibold text-blue-800">
-                Camera active. Waiting for a readable code.
+                {scanningMessage}
               </p>
 
               <p className="mt-2 text-sm leading-6 text-[#555555]">

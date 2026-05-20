@@ -2,23 +2,22 @@ import {
   axisPricelistItems,
   type AxisPricelistItem,
 } from '../../loan-requests/data/axisPricelist'
+import {
+  resolveAxisEquipmentCategory,
+  type AxisCategoryResolution,
+} from './resolveAxisEquipmentCategory'
 
-export type EquipmentCatalogCategory =
-  | 'Camera'
-  | 'Intercom'
-  | 'Audio'
-  | 'Radar'
-  | 'Access Control'
-  | 'Switch'
-  | 'Accessory'
-  | 'Other'
-
-export type ParsedAxisBoxCode = {
+export type ParsedAxisProductCode = {
   rawText: string
   detectedPartNumber?: string
-  detectedSerialNumber?: string
   catalogItem?: AxisPricelistItem
-  inferredCategory?: EquipmentCatalogCategory
+  categoryResolution?: AxisCategoryResolution
+  messages: string[]
+}
+
+export type ParsedAxisSerialCode = {
+  rawText: string
+  detectedSerialNumber?: string
   messages: string[]
 }
 
@@ -104,98 +103,29 @@ function detectSerialNumber(rawText: string) {
     return standaloneHexSerial[0].toUpperCase()
   }
 
+  const genericSerialCandidate = rawText.match(/\b[A-Z0-9]{10,24}\b/i)
+
+  if (genericSerialCandidate) {
+    return normalizeSerialCandidate(genericSerialCandidate[0])
+  }
+
   return undefined
 }
 
-function inferCategoryFromCatalogItem(
-  item: AxisPricelistItem,
-): EquipmentCatalogCategory {
-  const searchableText =
-    `${item.productName} ${item.productDescription}`.toLowerCase()
-
-  if (searchableText.includes('radar')) {
-    return 'Radar'
-  }
-
-  if (
-    searchableText.includes('intercom') ||
-    searchableText.includes('door station') ||
-    searchableText.includes('ip verso') ||
-    searchableText.includes('2n ip')
-  ) {
-    return 'Intercom'
-  }
-
-  if (
-    searchableText.includes('speaker') ||
-    searchableText.includes('microphone') ||
-    searchableText.includes('audio') ||
-    searchableText.includes('horn')
-  ) {
-    return 'Audio'
-  }
-
-  if (
-    searchableText.includes('access commander') ||
-    searchableText.includes('access unit') ||
-    searchableText.includes('door controller') ||
-    searchableText.includes('reader') ||
-    searchableText.includes('rfid') ||
-    searchableText.includes('keypad') ||
-    searchableText.includes('fingerprint')
-  ) {
-    return 'Access Control'
-  }
-
-  if (
-    searchableText.includes('network switch') ||
-    searchableText.includes('poe switch') ||
-    searchableText.includes('managed switch')
-  ) {
-    return 'Switch'
-  }
-
-  if (
-    searchableText.includes('camera') ||
-    searchableText.includes('ptz') ||
-    searchableText.includes('bullet') ||
-    searchableText.includes('dome') ||
-    searchableText.includes('thermal') ||
-    searchableText.includes('panoramic') ||
-    searchableText.includes('multisensor') ||
-    searchableText.includes('fisheye')
-  ) {
-    return 'Camera'
-  }
-
-  if (
-    searchableText.includes('mount') ||
-    searchableText.includes('bracket') ||
-    searchableText.includes('adapter') ||
-    searchableText.includes('adaptor') ||
-    searchableText.includes('cable') ||
-    searchableText.includes('power supply') ||
-    searchableText.includes('housing') ||
-    searchableText.includes('cover') ||
-    searchableText.includes('cabinet') ||
-    searchableText.includes('kit') ||
-    searchableText.includes('accessory')
-  ) {
-    return 'Accessory'
-  }
-
-  return 'Other'
-}
-
-export function parseAxisBoxCode(rawText: string): ParsedAxisBoxCode {
+export function parseAxisProductCode(
+  rawText: string,
+): ParsedAxisProductCode {
   const messages: string[] = []
 
   const catalogItem = findCatalogItem(rawText)
   const genericPartNumber = detectGenericPartNumber(rawText)
-  const serialNumber = detectSerialNumber(rawText)
 
   const detectedPartNumber =
     catalogItem?.partNumber ?? genericPartNumber ?? undefined
+
+  const categoryResolution = catalogItem
+    ? resolveAxisEquipmentCategory(catalogItem)
+    : undefined
 
   if (catalogItem) {
     messages.push('Part number matched with the Axis catalog.')
@@ -207,22 +137,36 @@ export function parseAxisBoxCode(rawText: string): ParsedAxisBoxCode {
     messages.push('No part number could be identified automatically.')
   }
 
-  if (serialNumber) {
-    messages.push('Serial number detected from the scanned content.')
-  } else {
-    messages.push('No serial number could be identified automatically.')
+  if (categoryResolution) {
+    messages.push(
+      `Category resolved as ${categoryResolution.category} with ${categoryResolution.confidence} confidence.`,
+    )
   }
-
-  const inferredCategory = catalogItem
-    ? inferCategoryFromCatalogItem(catalogItem)
-    : undefined
 
   return {
     rawText,
     detectedPartNumber,
-    detectedSerialNumber: serialNumber,
     catalogItem,
-    inferredCategory,
+    categoryResolution,
+    messages,
+  }
+}
+
+export function parseAxisSerialCode(
+  rawText: string,
+): ParsedAxisSerialCode {
+  const messages: string[] = []
+  const serialNumber = detectSerialNumber(rawText)
+
+  if (serialNumber) {
+    messages.push('Serial number detected successfully.')
+  } else {
+    messages.push('No serial number could be identified automatically.')
+  }
+
+  return {
+    rawText,
+    detectedSerialNumber: serialNumber,
     messages,
   }
 }

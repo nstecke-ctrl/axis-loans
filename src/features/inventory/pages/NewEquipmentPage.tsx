@@ -9,8 +9,10 @@ import {
 } from '../data/equipment'
 import { createEquipmentInSupabase } from '../data/equipmentSupabase'
 import {
-  parseAxisBoxCode,
-  type ParsedAxisBoxCode,
+  parseAxisProductCode,
+  parseAxisSerialCode,
+  type ParsedAxisProductCode,
+  type ParsedAxisSerialCode,
 } from '../utils/parseAxisBoxCode'
 
 type NewEquipmentForm = {
@@ -28,6 +30,8 @@ type NewEquipmentForm = {
   conditionNotes: string
   generalNotes: string
 }
+
+type ScannerStep = 'product' | 'serial' | null
 
 const initialFormState: NewEquipmentForm = {
   category: '',
@@ -53,6 +57,17 @@ function formatMsrp(value: number) {
   }).format(value)
 }
 
+function formatConfidence(value: 'high' | 'medium' | 'low') {
+  switch (value) {
+    case 'high':
+      return 'High'
+    case 'medium':
+      return 'Medium'
+    case 'low':
+      return 'Low'
+  }
+}
+
 export function NewEquipmentPage() {
   const [form, setForm] = useState<NewEquipmentForm>(initialFormState)
   const [submittedEquipment, setSubmittedEquipment] =
@@ -60,9 +75,11 @@ export function NewEquipmentPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const [scannerOpen, setScannerOpen] = useState(false)
-  const [parsedScanResult, setParsedScanResult] =
-    useState<ParsedAxisBoxCode | null>(null)
+  const [scannerStep, setScannerStep] = useState<ScannerStep>(null)
+  const [productScanResult, setProductScanResult] =
+    useState<ParsedAxisProductCode | null>(null)
+  const [serialScanResult, setSerialScanResult] =
+    useState<ParsedAxisSerialCode | null>(null)
   const [scanAppliedMessage, setScanAppliedMessage] = useState<string | null>(
     null,
   )
@@ -83,6 +100,16 @@ export function NewEquipmentPage() {
         serialIsValid,
     ) && !isSubmitting
 
+  const productStepCompleted = Boolean(
+    productScanResult?.detectedPartNumber,
+  )
+
+  const serialStepCompleted = Boolean(
+    serialScanResult?.detectedSerialNumber,
+  )
+
+  const capturedDataReady = productStepCompleted && serialStepCompleted
+
   function updateForm(
     field: keyof NewEquipmentForm,
     value: string | boolean,
@@ -101,47 +128,59 @@ export function NewEquipmentPage() {
     }))
   }
 
+  function openProductScanner() {
+    setScanAppliedMessage(null)
+    setScannerStep('product')
+  }
+
+  function openSerialScanner() {
+    setScanAppliedMessage(null)
+    setScannerStep('serial')
+  }
+
+  function closeScanner() {
+    setScannerStep(null)
+  }
+
   function handleDetectedCode(rawText: string) {
-    const parsedResult = parseAxisBoxCode(rawText)
+    if (scannerStep === 'product') {
+      const parsedResult = parseAxisProductCode(rawText)
+      setProductScanResult(parsedResult)
+      setScanAppliedMessage(null)
+      setScannerStep(null)
+      return
+    }
 
-    setParsedScanResult(parsedResult)
-    setScanAppliedMessage(null)
-    setScannerOpen(false)
+    if (scannerStep === 'serial') {
+      const parsedResult = parseAxisSerialCode(rawText)
+      setSerialScanResult(parsedResult)
+      setScanAppliedMessage(null)
+      setScannerStep(null)
+    }
   }
 
-  function handleOpenScanner() {
-    setParsedScanResult(null)
-    setScanAppliedMessage(null)
-    setScannerOpen(true)
-  }
-
-  function handleCloseScanner() {
-    setScannerOpen(false)
-  }
-
-  function handleApplyScanResult() {
-    if (!parsedScanResult) {
+  function handleApplyCapturedData() {
+    if (!capturedDataReady) {
       return
     }
 
     setForm((currentForm) => ({
       ...currentForm,
-      brand: currentForm.brand.trim() || 'Axis',
       category:
-        parsedScanResult.inferredCategory ?? currentForm.category,
+        productScanResult?.categoryResolution?.category ??
+        currentForm.category,
+      brand: currentForm.brand.trim() || 'Axis',
       model:
-        parsedScanResult.catalogItem?.productName ?? currentForm.model,
+        productScanResult?.catalogItem?.productName ?? currentForm.model,
       partNumber:
-        parsedScanResult.detectedPartNumber ?? currentForm.partNumber,
+        productScanResult?.detectedPartNumber ?? currentForm.partNumber,
       serialNumber:
-        parsedScanResult.detectedSerialNumber ?? currentForm.serialNumber,
-      hasNoSerial: parsedScanResult.detectedSerialNumber
-        ? false
-        : currentForm.hasNoSerial,
+        serialScanResult?.detectedSerialNumber ?? currentForm.serialNumber,
+      hasNoSerial: false,
     }))
 
     setScanAppliedMessage(
-      'Detected information was applied to the equipment form.',
+      'Product, category and serial information were applied to the equipment form.',
     )
   }
 
@@ -185,8 +224,9 @@ export function NewEquipmentPage() {
     setForm(initialFormState)
     setSubmittedEquipment(null)
     setSubmitError(null)
-    setScannerOpen(false)
-    setParsedScanResult(null)
+    setScannerStep(null)
+    setProductScanResult(null)
+    setSerialScanResult(null)
     setScanAppliedMessage(null)
   }
 
@@ -417,70 +457,104 @@ export function NewEquipmentPage() {
         <div className="grid gap-6 xl:grid-cols-[1.45fr_0.8fr]">
           <div className="space-y-6">
             <article className="rounded-2xl border border-[#e5e5e2] bg-white p-6 shadow-sm">
-              <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
-                <SectionHeader
-                  eyebrow="Optional Fast Capture"
-                  title="Scan Axis Box Code"
-                />
-
-                <button
-                  type="button"
-                  onClick={handleOpenScanner}
-                  className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
-                >
-                  Open Camera Scanner
-                </button>
-              </div>
+              <SectionHeader
+                eyebrow="Optional Fast Capture"
+                title="Scan Axis Box Labels"
+              />
 
               <p className="mt-4 max-w-4xl text-sm leading-7 text-[#555555]">
-                Use the smartphone camera to read the code printed on the box.
-                The system will try to identify the part number, serial number,
-                product model and category automatically.
+                Axis boxes normally include one code with the product
+                information and another code with the serial number. Complete
+                both scans to prepare the equipment record automatically.
               </p>
 
-              {scannerOpen && (
+              <div className="mt-6 grid gap-5 lg:grid-cols-2">
+                <ScanStepCard
+                  step="Step 1 of 2"
+                  title="Scan Product Code"
+                  description="Read the label that contains the Axis part number. This is used to identify the product and match it with the internal catalog."
+                  completed={productStepCompleted}
+                  buttonLabel={
+                    productStepCompleted
+                      ? 'Rescan Product Code'
+                      : 'Scan Product Code'
+                  }
+                  onClick={openProductScanner}
+                />
+
+                <ScanStepCard
+                  step="Step 2 of 2"
+                  title="Scan Serial Number"
+                  description="Read the second code on the box. This code is used to capture the unique serial number of the physical device."
+                  completed={serialStepCompleted}
+                  disabled={!productStepCompleted}
+                  buttonLabel={
+                    serialStepCompleted
+                      ? 'Rescan Serial Number'
+                      : 'Scan Serial Number'
+                  }
+                  onClick={openSerialScanner}
+                />
+              </div>
+
+              {scannerStep === 'product' && (
                 <div className="mt-6">
                   <EquipmentCodeScanner
+                    eyebrow="Product Capture"
+                    title="Scan Product Code"
+                    description="Point the camera at the barcode or QR code that contains the product information from the Axis box."
+                    scanningMessage="Camera active. Waiting for the product code."
                     onDetected={handleDetectedCode}
-                    onClose={handleCloseScanner}
+                    onClose={closeScanner}
                   />
                 </div>
               )}
 
-              {parsedScanResult && (
+              {scannerStep === 'serial' && (
+                <div className="mt-6">
+                  <EquipmentCodeScanner
+                    eyebrow="Serial Capture"
+                    title="Scan Serial Number"
+                    description="Point the camera at the second code on the Axis box. This code should contain the unique serial number of the device."
+                    scanningMessage="Camera active. Waiting for the serial number code."
+                    onDetected={handleDetectedCode}
+                    onClose={closeScanner}
+                  />
+                </div>
+              )}
+
+              {(productScanResult || serialScanResult) && (
                 <div className="mt-6 rounded-2xl border border-[#e5e5e2] bg-[#fafaf8] p-5">
                   <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
                     <div>
                       <p className="text-sm font-medium text-[#666666]">
-                        Scan Interpretation
+                        Captured Information
                       </p>
 
                       <h4 className="mt-1 text-lg font-semibold text-[#171717]">
-                        Detected box information
+                        Scan summary
                       </h4>
                     </div>
 
                     <button
                       type="button"
-                      onClick={handleApplyScanResult}
-                      className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#ffda00] px-4 py-2.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f2cd00]"
+                      onClick={handleApplyCapturedData}
+                      disabled={!capturedDataReady}
+                      className={`inline-flex shrink-0 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                        capturedDataReady
+                          ? 'bg-[#ffda00] text-[#111111] hover:bg-[#f2cd00]'
+                          : 'cursor-not-allowed bg-[#ecece8] text-[#888888]'
+                      }`}
                     >
-                      Apply to Form
+                      Apply Captured Data
                     </button>
                   </div>
 
-                  <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <ScanSummaryField
                       label="Part Number"
                       value={
-                        parsedScanResult.detectedPartNumber ?? 'Not detected'
-                      }
-                    />
-
-                    <ScanSummaryField
-                      label="Serial Number"
-                      value={
-                        parsedScanResult.detectedSerialNumber ??
+                        productScanResult?.detectedPartNumber ??
                         'Not detected'
                       }
                     />
@@ -488,64 +562,103 @@ export function NewEquipmentPage() {
                     <ScanSummaryField
                       label="Matched Model"
                       value={
-                        parsedScanResult.catalogItem?.productName ??
+                        productScanResult?.catalogItem?.productName ??
                         'No catalog match'
                       }
                     />
 
                     <ScanSummaryField
-                      label="Inferred Category"
+                      label="Reference MSRP"
                       value={
-                        parsedScanResult.inferredCategory ?? 'Not inferred'
+                        productScanResult?.catalogItem
+                          ? formatMsrp(productScanResult.catalogItem.msrp)
+                          : 'Not available'
+                      }
+                    />
+
+                    <ScanSummaryField
+                      label="Detected Category"
+                      value={
+                        productScanResult?.categoryResolution?.category ??
+                        'Not resolved'
+                      }
+                    />
+
+                    <ScanSummaryField
+                      label="Category Confidence"
+                      value={
+                        productScanResult?.categoryResolution
+                          ? formatConfidence(
+                              productScanResult.categoryResolution.confidence,
+                            )
+                          : 'Not available'
+                      }
+                    />
+
+                    <ScanSummaryField
+                      label="Serial Number"
+                      value={
+                        serialScanResult?.detectedSerialNumber ??
+                        'Not detected'
                       }
                     />
                   </div>
 
-                  {parsedScanResult.catalogItem && (
+                  {productScanResult?.catalogItem && (
                     <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                       <p className="text-sm font-semibold text-emerald-900">
-                        Axis catalog match found
+                        Catalog match found
                       </p>
 
-                      <div className="mt-3 grid gap-4 md:grid-cols-2">
-                        <SummaryField
-                          label="Reference MSRP"
-                          value={formatMsrp(parsedScanResult.catalogItem.msrp)}
-                        />
-
-                        <SummaryField
-                          label="Currency"
-                          value={parsedScanResult.catalogItem.currency}
-                        />
-                      </div>
-
-                      <p className="mt-4 text-sm leading-6 text-emerald-800">
-                        {parsedScanResult.catalogItem.productDescription}
+                      <p className="mt-3 text-sm leading-6 text-emerald-800">
+                        {productScanResult.catalogItem.productDescription}
                       </p>
                     </div>
                   )}
 
-                  <div className="mt-5 rounded-2xl border border-[#e5e5e2] bg-white p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[#777777]">
-                      Parser Notes
-                    </p>
+                  {productScanResult?.categoryResolution ? (
+                    <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                      <p className="text-sm font-semibold text-blue-900">
+                        Category resolved automatically
+                      </p>
 
-                    <ul className="mt-3 space-y-2 text-sm leading-6 text-[#555555]">
-                      {parsedScanResult.messages.map((message) => (
-                        <li key={message}>• {message}</li>
-                      ))}
-                    </ul>
-                  </div>
+                      <p className="mt-2 text-sm leading-6 text-blue-800">
+                        {productScanResult.categoryResolution.reason}
+                      </p>
 
-                  <div className="mt-5 rounded-2xl border border-[#e5e5e2] bg-white p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[#777777]">
-                      Raw Scanned Content
-                    </p>
+                      <p className="mt-2 text-sm leading-6 text-blue-800">
+                        This category will be applied to the form, but it
+                        remains editable before saving the asset.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-5 rounded-2xl border border-amber-200 bg-[#fff8d6] p-4">
+                      <p className="text-sm font-semibold text-[#5d4a00]">
+                        Category could not be resolved
+                      </p>
 
-                    <p className="mt-2 break-all text-sm leading-6 text-[#171717]">
-                      {parsedScanResult.rawText}
-                    </p>
-                  </div>
+                      <p className="mt-2 text-sm leading-6 text-[#5d4a00]">
+                        The form will remain editable and the category can be
+                        selected manually.
+                      </p>
+                    </div>
+                  )}
+
+                  {productScanResult && (
+                    <ParserBlock
+                      title="Product Code Parser Notes"
+                      messages={productScanResult.messages}
+                      rawText={productScanResult.rawText}
+                    />
+                  )}
+
+                  {serialScanResult && (
+                    <ParserBlock
+                      title="Serial Code Parser Notes"
+                      messages={serialScanResult.messages}
+                      rawText={serialScanResult.rawText}
+                    />
+                  )}
                 </div>
               )}
             </article>
@@ -808,6 +921,91 @@ function SectionHeader({
     <div>
       <p className="text-sm font-medium text-[#666666]">{eyebrow}</p>
       <h3 className="mt-1 text-xl font-semibold text-[#171717]">{title}</h3>
+    </div>
+  )
+}
+
+function ScanStepCard({
+  step,
+  title,
+  description,
+  completed,
+  disabled = false,
+  buttonLabel,
+  onClick,
+}: {
+  step: string
+  title: string
+  description: string
+  completed: boolean
+  disabled?: boolean
+  buttonLabel: string
+  onClick: () => void
+}) {
+  return (
+    <div className="rounded-2xl border border-[#e5e5e2] bg-[#fafaf8] p-5">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        <div>
+          <p className="text-sm font-medium text-[#666666]">{step}</p>
+          <h4 className="mt-1 text-lg font-semibold text-[#171717]">
+            {title}
+          </h4>
+        </div>
+
+        <StatusBadge
+          label={completed ? 'Completed' : disabled ? 'Locked' : 'Pending'}
+          tone={completed ? 'success' : disabled ? 'neutral' : 'warning'}
+        />
+      </div>
+
+      <p className="mt-4 text-sm leading-6 text-[#555555]">{description}</p>
+
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className={`mt-5 w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+          disabled
+            ? 'cursor-not-allowed bg-[#ecece8] text-[#888888]'
+            : 'bg-[#181818] text-white hover:bg-black'
+        }`}
+      >
+        {buttonLabel}
+      </button>
+    </div>
+  )
+}
+
+function ParserBlock({
+  title,
+  messages,
+  rawText,
+}: {
+  title: string
+  messages: string[]
+  rawText: string
+}) {
+  return (
+    <div className="mt-5 rounded-2xl border border-[#e5e5e2] bg-white p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#777777]">
+        {title}
+      </p>
+
+      <ul className="mt-3 space-y-2 text-sm leading-6 text-[#555555]">
+        {messages.map((message) => (
+          <li key={message}>• {message}</li>
+        ))}
+      </ul>
+
+      <div className="mt-4 rounded-xl bg-[#fafaf8] p-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#777777]">
+          Raw scanned content
+        </p>
+
+        <p className="mt-2 break-all text-sm leading-6 text-[#171717]">
+          {rawText}
+        </p>
+      </div>
     </div>
   )
 }
