@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
+import { generateLoanDocumentPdf } from '../utils/generateLoanDocumentPdf'
 import {
   getLoanEquipmentStatusTone,
   getLoanStatusTone,
@@ -342,6 +343,14 @@ export function LoanDetailPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => void generateLoanDocumentPdf(loan)}
+              className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+            >
+              Download Loan PDF
+            </button>
+
             <button
               type="button"
               onClick={openEditForm}

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { Link, useNavigate } from 'react-router'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import {
   getLoanStatusTone,
@@ -19,6 +19,7 @@ function normalizeSearchText(value: string) {
 }
 
 export function LoansPage() {
+  const navigate = useNavigate()
   const [loans, setLoans] = useState<LoanItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -147,6 +148,20 @@ export function LoansPage() {
 
   function clearQuickFilter() {
     setQuickFilter('All')
+  }
+
+  function openLoanDetail(loanCode: string) {
+    navigate(`/loans/${loanCode}`)
+  }
+
+  function handleLoanRowKeyDown(
+    event: KeyboardEvent<HTMLTableRowElement>,
+    loanCode: string,
+  ) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      openLoanDetail(loanCode)
+    }
   }
 
   return (
@@ -402,7 +417,13 @@ export function LoansPage() {
                     {filteredLoans.map((loan) => (
                       <tr
                         key={loan.code}
-                        className="transition hover:bg-[#fafaf8]"
+                        role="link"
+                        tabIndex={0}
+                        onClick={() => openLoanDetail(loan.code)}
+                        onKeyDown={(event) =>
+                          handleLoanRowKeyDown(event, loan.code)
+                        }
+                        className="cursor-pointer transition hover:bg-[#fafaf8] focus:bg-[#fafaf8] focus:outline-none"
                       >
                         <td className="whitespace-nowrap px-5 py-4 text-sm font-semibold text-[#171717]">
                           {loan.code}
@@ -448,9 +469,10 @@ export function LoansPage() {
                         <td className="whitespace-nowrap px-5 py-4 text-right">
                           <Link
                             to={`/loans/${loan.code}`}
-                            className="text-sm font-semibold text-[#171717] transition hover:text-black hover:underline"
+                            onClick={(event) => event.stopPropagation()}
+                            className="inline-flex items-center justify-center rounded-lg border border-[#d8d8d4] bg-white px-3 py-1.5 text-xs font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                           >
-                            View Details
+                            Open
                           </Link>
                         </td>
                       </tr>
