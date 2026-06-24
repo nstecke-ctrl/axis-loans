@@ -269,6 +269,20 @@ type PublicLoanRequestRpcResponse = {
   request_code: string
 }
 
+async function notifyLoanRequestSubmitted(requestCode: string) {
+  const response = await fetch('/api/notify-loan-request', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ requestCode }),
+  })
+
+  if (!response.ok) {
+    throw new Error('Loan request notification could not be sent.')
+  }
+}
+
 export async function createPublicLoanRequestInSupabase(
   input: CreatePublicLoanRequestInput,
 ) {
@@ -313,6 +327,10 @@ export async function createPublicLoanRequestInSupabase(
       'The request was processed, but no request code was returned.',
     )
   }
+
+  void notifyLoanRequestSubmitted(createdRequest.request_code).catch(() => {
+    // Email is helpful, but the saved request is the source of truth.
+  })
 
   return {
     requestId: createdRequest.request_id,
