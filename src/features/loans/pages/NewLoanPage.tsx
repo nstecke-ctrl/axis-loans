@@ -381,14 +381,14 @@ export function NewLoanPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               to="/loan-requests"
-              className="inline-flex rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+              className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl bg-[#181818] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
             >
               Back to Loan Requests
             </Link>
 
             <Link
               to="/loans"
-              className="inline-flex rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+              className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
             >
               Back to Loans
             </Link>
@@ -559,21 +559,21 @@ export function NewLoanPage() {
                 <div className="mt-6 space-y-3">
                   <Link
                     to="/loans"
-                    className="inline-flex w-full justify-center rounded-xl bg-[#181818] px-4 py-3 text-sm font-semibold text-white transition hover:bg-black"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#181818] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-black"
                   >
                     Back to Loans
                   </Link>
 
                   <Link
                     to="/inventory"
-                    className="inline-flex w-full justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     View Updated Inventory
                   </Link>
 
                   <Link
                     to={`/loans/${submittedLoan.loan.code}`}
-                    className="inline-flex w-full justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     View Loan Detail
                   </Link>
@@ -583,7 +583,7 @@ export function NewLoanPage() {
                     onClick={() =>
                       void generateLoanDocumentPdf(submittedLoan.loan)
                     }
-                    className="inline-flex w-full justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     Download Loan PDF
                   </button>
@@ -591,7 +591,7 @@ export function NewLoanPage() {
                   <button
                     type="button"
                     onClick={handleCreateAnotherLoan}
-                    className="w-full rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     Register Another Loan
                   </button>

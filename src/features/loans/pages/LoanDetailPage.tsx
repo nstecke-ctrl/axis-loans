@@ -354,7 +354,7 @@ export function LoanDetailPage() {
             <button
               type="button"
               onClick={() => void generateLoanDocumentPdf(loan)}
-              className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+              className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
             >
               Download Loan PDF
             </button>
@@ -363,7 +363,7 @@ export function LoanDetailPage() {
               <button
                 type="button"
                 onClick={openEditForm}
-                className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
               >
                 Edit Loan
               </button>
@@ -373,14 +373,14 @@ export function LoanDetailPage() {
               (returnActionEnabled ? (
                 <Link
                   to={`/loans/${loan.code}/return`}
-                  className="rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+                  className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl bg-[#181818] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
                 >
                   Register Return
                 </Link>
               ) : (
                 <button
                   disabled
-                  className="cursor-not-allowed rounded-xl bg-[#ecece8] px-4 py-2.5 text-sm font-semibold text-[#888888]"
+                  className="inline-flex min-h-10 cursor-not-allowed items-center justify-center whitespace-nowrap rounded-xl bg-[#ecece8] px-4 py-2.5 text-center text-sm font-semibold text-[#888888]"
                 >
                   {loan.status === 'Returned'
                     ? 'Loan Closed'
@@ -583,7 +583,7 @@ export function LoanDetailPage() {
               <button
                 type="button"
                 onClick={closeEditForm}
-                className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
               >
                 Cancel
               </button>
@@ -596,7 +596,7 @@ export function LoanDetailPage() {
                   !profileHasMeaningfulChange ||
                   isSavingLoan
                 }
-                className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                className={`inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl px-4 py-2.5 text-center text-sm font-semibold transition ${
                   editFormIsReady &&
                   profileHasMeaningfulChange &&
                   !isSavingLoan

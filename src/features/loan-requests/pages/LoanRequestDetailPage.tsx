@@ -202,7 +202,7 @@ export function LoanRequestDetailPage() {
 
           <Link
             to="/loan-requests"
-            className="mt-6 inline-flex rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+            className="mt-6 inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl bg-[#181818] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
           >
             Back to Loan Requests
           </Link>
@@ -229,7 +229,7 @@ export function LoanRequestDetailPage() {
 
           <Link
             to="/loan-requests"
-            className="mt-6 inline-flex rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+            className="mt-6 inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl bg-[#181818] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
           >
             Back to Loan Requests
           </Link>
@@ -581,7 +581,7 @@ export function LoanRequestDetailPage() {
 
                 <Link
                   to={`/loans/${request.convertedLoanCode}`}
-                  className="mt-5 inline-flex w-full justify-center rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-950"
+                  className="mt-5 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-emerald-900 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-950"
                 >
                   View Loan
                 </Link>

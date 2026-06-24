@@ -307,7 +307,7 @@ export function ReturnLoanPage() {
 
           <Link
             to="/loans"
-            className="mt-6 inline-flex rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+            className="mt-6 inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl bg-[#181818] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
           >
             Back to Loans
           </Link>
@@ -334,7 +334,7 @@ export function ReturnLoanPage() {
 
           <Link
             to="/loans"
-            className="mt-6 inline-flex rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+            className="mt-6 inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl bg-[#181818] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
           >
             Back to Loans
           </Link>
@@ -578,21 +578,21 @@ export function ReturnLoanPage() {
                 <div className="mt-6 space-y-3">
                   <Link
                     to={`/loans/${loan.code}`}
-                    className="inline-flex w-full justify-center rounded-xl bg-[#181818] px-4 py-3 text-sm font-semibold text-white transition hover:bg-black"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#181818] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-black"
                   >
                     Back to Loan
                   </Link>
 
                   <Link
                     to="/loans"
-                    className="inline-flex w-full justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     Back to Loan List
                   </Link>
 
                   <Link
                     to="/inventory"
-                    className="inline-flex w-full justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     Review Updated Inventory
                   </Link>
@@ -711,7 +711,7 @@ export function ReturnLoanPage() {
                   <button
                     type="button"
                     onClick={selectAllPendingItems}
-                    className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     Select All
                   </button>
@@ -719,7 +719,7 @@ export function ReturnLoanPage() {
                   <button
                     type="button"
                     onClick={clearAllSelections}
-                    className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     Clear
                   </button>
