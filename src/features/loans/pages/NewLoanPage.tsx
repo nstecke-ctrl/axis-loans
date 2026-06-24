@@ -11,6 +11,7 @@ import type { LoanRequest } from '../../loan-requests/data/loanRequests'
 import { fetchLoanRequestDetailFromSupabase } from '../../loan-requests/data/loanRequestsSupabase'
 import type { LoanItem } from '../data/loans'
 import { createInternalLoanInSupabase } from '../data/loansSupabase'
+import { generateLoanDocumentPdf } from '../utils/generateLoanDocumentPdf'
 
 type NewLoanForm = {
   recipientType: string
@@ -576,6 +577,16 @@ export function NewLoanPage() {
                   >
                     View Loan Detail
                   </Link>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void generateLoanDocumentPdf(submittedLoan.loan)
+                    }
+                    className="inline-flex w-full justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                  >
+                    Download Loan PDF
+                  </button>
 
                   <button
                     type="button"
