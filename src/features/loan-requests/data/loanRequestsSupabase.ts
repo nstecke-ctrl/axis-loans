@@ -15,7 +15,7 @@ type LoanRequestItemRow = {
   product_description: string
   quantity: number
   msrp_unit: number | string
-  msrp_line_total: number | string
+  msrp_line_total: number | string | null
 }
 
 type LoanRequestRow = {
@@ -104,7 +104,10 @@ function mapLoanRequestRowToRequest(
       productDescription: item.product_description,
       quantity: item.quantity,
       msrpUnit: parseNumericValue(item.msrp_unit),
-      msrpLineTotal: parseNumericValue(item.msrp_line_total),
+      msrpLineTotal:
+        item.msrp_line_total === null
+          ? item.quantity * parseNumericValue(item.msrp_unit)
+          : parseNumericValue(item.msrp_line_total),
     })),
     msrpTotalAmount: parseNumericValue(row.msrp_total_amount),
   }
