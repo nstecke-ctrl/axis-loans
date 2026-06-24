@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useAppRole } from '../../../components/auth/useAppRole'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
+import { internalContacts } from '../../../lib/internalContacts'
 import {
   getLoanStatusTone,
   type LoanDisplayStatus,
@@ -19,9 +20,20 @@ function normalizeSearchText(value: string) {
     .trim()
 }
 
+function getInitialQuickFilter(value: string | null): QuickFilter {
+  return value === 'Open' ||
+    value === 'Overdue' ||
+    value === 'Due Soon' ||
+    value === 'Returned'
+    ? value
+    : 'All'
+}
+
 export function LoansPage() {
   const { permissions } = useAppRole()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const requestedQuickFilter = searchParams.get('quick')
   const [loans, setLoans] = useState<LoanItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -32,7 +44,9 @@ export function LoansPage() {
   )
   const [recipientTypeFilter, setRecipientTypeFilter] = useState('All')
   const [ownerFilter, setOwnerFilter] = useState('All')
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('All')
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>(() =>
+    getInitialQuickFilter(requestedQuickFilter),
+  )
 
   useEffect(() => {
     let isMounted = true
@@ -139,6 +153,12 @@ export function LoansPage() {
   const overdueLoans = loans.filter((loan) => loan.status === 'Overdue')
   const dueSoonLoans = loans.filter((loan) => loan.status === 'Due Soon')
   const returnedLoans = loans.filter((loan) => loan.status === 'Returned')
+  const ownerOptions = Array.from(
+    new Set([
+      ...internalContacts,
+      ...loans.map((loan) => loan.responsible).filter(Boolean),
+    ]),
+  ).sort((a, b) => a.localeCompare(b))
 
   function applyQuickFilter(filter: QuickFilter) {
     setQuickFilter(filter)
@@ -182,12 +202,13 @@ export function LoansPage() {
 
           {permissions.canManageLoans && (
             <div className="flex flex-wrap gap-3">
-              <Link
-                to="/loans"
+              <button
+                type="button"
+                onClick={() => applyQuickFilter('Open')}
                 className="inline-flex items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
               >
-                Return Equipment
-              </Link>
+                Open Returns
+              </button>
 
               <Link
                 to="/loans/new"
@@ -318,9 +339,11 @@ export function LoansPage() {
                 className="w-full rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm text-[#171717] outline-none transition focus:border-[#ffda00]"
               >
                 <option value="All">All</option>
-                <option value="Nicolás Steck">Nicolás Steck</option>
-                <option value="Pre-Sales Team">Pre-Sales Team</option>
-                <option value="Sales Team">Sales Team</option>
+                {ownerOptions.map((owner) => (
+                  <option key={owner} value={owner}>
+                    {owner}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -471,13 +494,27 @@ export function LoansPage() {
                         </td>
 
                         <td className="whitespace-nowrap px-5 py-4 text-right">
-                          <Link
-                            to={`/loans/${loan.code}`}
-                            onClick={(event) => event.stopPropagation()}
-                            className="inline-flex items-center justify-center rounded-lg border border-[#d8d8d4] bg-white px-3 py-1.5 text-xs font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
-                          >
-                            Open
-                          </Link>
+                          <div className="flex justify-end gap-2">
+                            <Link
+                              to={`/loans/${loan.code}`}
+                              onClick={(event) => event.stopPropagation()}
+                              className="inline-flex min-h-8 items-center justify-center whitespace-nowrap rounded-lg border border-[#d8d8d4] bg-white px-3 py-1.5 text-center text-xs font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                            >
+                              Open
+                            </Link>
+
+                            {permissions.canManageLoans &&
+                              loan.status !== 'Returned' &&
+                              loan.status !== 'Cancelled' && (
+                                <Link
+                                  to={`/loans/${loan.code}/return`}
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="inline-flex min-h-8 items-center justify-center whitespace-nowrap rounded-lg bg-[#181818] px-3 py-1.5 text-center text-xs font-semibold text-white transition hover:bg-black"
+                                >
+                                  Return
+                                </Link>
+                              )}
+                          </div>
                         </td>
                       </tr>
                     ))}

@@ -111,25 +111,25 @@ export function DashboardPage() {
     {
       label: 'Available',
       value: `${availableEquipmentCount}`,
-      to: '/inventory',
+      to: '/inventory?quick=Available',
       description: 'Review available assets',
     },
     {
       label: 'On Loan',
       value: `${onLoanEquipmentCount}`,
-      to: '/inventory',
+      to: '/inventory?quick=On%20Loan',
       description: 'Review loaned equipment',
     },
     {
       label: 'Overdue Loans',
       value: `${overdueLoans.length}`,
-      to: '/loans',
+      to: '/loans?quick=Overdue',
       description: 'Review late returns',
     },
     {
       label: 'Pending Requests',
       value: `${pendingRequestsCount}`,
-      to: '/loan-requests',
+      to: '/loan-requests?quick=Pending',
       description: 'Review pending submissions',
     },
   ]
@@ -152,10 +152,10 @@ export function DashboardPage() {
             {permissions.canManageLoans && (
               <>
                 <Link
-                  to="/loans"
+                  to="/loans?quick=Open"
                   className="inline-flex items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                 >
-                  Return Equipment
+                  Open Returns
                 </Link>
 
                 <Link

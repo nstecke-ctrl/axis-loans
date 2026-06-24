@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { useAppRole } from '../../../components/auth/useAppRole'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import {
@@ -19,8 +19,18 @@ function normalizeSearchText(value: string) {
     .trim()
 }
 
+function getInitialQuickFilter(value: string | null): QuickFilter {
+  return value === 'Available' ||
+    value === 'On Loan' ||
+    value === 'Requires Attention'
+    ? value
+    : 'All'
+}
+
 export function InventoryPage() {
   const { permissions } = useAppRole()
+  const [searchParams] = useSearchParams()
+  const requestedQuickFilter = searchParams.get('quick')
 
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -32,7 +42,9 @@ export function InventoryPage() {
   )
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [locationFilter, setLocationFilter] = useState('All')
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('All')
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>(() =>
+    getInitialQuickFilter(requestedQuickFilter),
+  )
 
   useEffect(() => {
     let isMounted = true
@@ -211,7 +223,75 @@ export function InventoryPage() {
           </div>
         )}
 
-        <div className="rounded-2xl border border-[#e5e5e2] bg-white p-5 shadow-sm">
+        <div className="grid gap-4 md:grid-cols-3">
+          <button
+            type="button"
+            onClick={() => applyQuickFilter('Available')}
+            className={`rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+              quickFilter === 'Available'
+                ? 'border-emerald-300 ring-2 ring-emerald-100'
+                : 'border-[#e5e5e2]'
+            }`}
+          >
+            <p className="text-sm font-medium text-[#666666]">
+              Available Inventory
+            </p>
+
+            <p className="mt-3 text-3xl font-semibold text-[#171717]">
+              {availableInventory.length}
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-[#555555]">
+              Assets ready to be assigned to new loans.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => applyQuickFilter('On Loan')}
+            className={`rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+              quickFilter === 'On Loan'
+                ? 'border-blue-300 ring-2 ring-blue-100'
+                : 'border-[#e5e5e2]'
+            }`}
+          >
+            <p className="text-sm font-medium text-[#666666]">
+              Equipment on Loan
+            </p>
+
+            <p className="mt-3 text-3xl font-semibold text-[#171717]">
+              {onLoanInventory.length}
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-[#555555]">
+              Assets currently outside the warehouse.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => applyQuickFilter('Requires Attention')}
+            className={`rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+              quickFilter === 'Requires Attention'
+                ? 'border-red-300 ring-2 ring-red-100'
+                : 'border-[#e5e5e2]'
+            }`}
+          >
+            <p className="text-sm font-medium text-[#666666]">
+              Requires Attention
+            </p>
+
+            <p className="mt-3 text-3xl font-semibold text-[#171717]">
+              {requiresAttentionInventory.length}
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-[#555555]">
+              Assets not ready for immediate reassignment.
+            </p>
+          </button>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-[#e5e5e2] bg-white p-5 shadow-sm">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_repeat(3,minmax(0,0.8fr))]">
             <div>
               <label className="mb-2 block text-sm font-medium text-[#444444]">
@@ -448,73 +528,6 @@ export function InventoryPage() {
           )}
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <button
-            type="button"
-            onClick={() => applyQuickFilter('Available')}
-            className={`rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-              quickFilter === 'Available'
-                ? 'border-emerald-300 ring-2 ring-emerald-100'
-                : 'border-[#e5e5e2]'
-            }`}
-          >
-            <p className="text-sm font-medium text-[#666666]">
-              Available Inventory
-            </p>
-
-            <p className="mt-3 text-3xl font-semibold text-[#171717]">
-              {availableInventory.length}
-            </p>
-
-            <p className="mt-2 text-sm leading-6 text-[#555555]">
-              Assets ready to be assigned to new loans.
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => applyQuickFilter('On Loan')}
-            className={`rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-              quickFilter === 'On Loan'
-                ? 'border-blue-300 ring-2 ring-blue-100'
-                : 'border-[#e5e5e2]'
-            }`}
-          >
-            <p className="text-sm font-medium text-[#666666]">
-              Equipment on Loan
-            </p>
-
-            <p className="mt-3 text-3xl font-semibold text-[#171717]">
-              {onLoanInventory.length}
-            </p>
-
-            <p className="mt-2 text-sm leading-6 text-[#555555]">
-              Assets currently outside the warehouse.
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => applyQuickFilter('Requires Attention')}
-            className={`rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-              quickFilter === 'Requires Attention'
-                ? 'border-red-300 ring-2 ring-red-100'
-                : 'border-[#e5e5e2]'
-            }`}
-          >
-            <p className="text-sm font-medium text-[#666666]">
-              Requires Attention
-            </p>
-
-            <p className="mt-3 text-3xl font-semibold text-[#171717]">
-              {requiresAttentionInventory.length}
-            </p>
-
-            <p className="mt-2 text-sm leading-6 text-[#555555]">
-              Assets not ready for immediate reassignment.
-            </p>
-          </button>
-        </div>
       </section>
     </>
   )

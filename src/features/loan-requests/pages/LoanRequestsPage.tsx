@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import {
   getLoanRequestStatusTone,
@@ -22,6 +22,15 @@ function normalizeSearchText(value: string) {
     .trim()
 }
 
+function getInitialQuickFilter(value: string | null): QuickFilter {
+  return value === 'Pending' ||
+    value === 'Approved' ||
+    value === 'Rejected' ||
+    value === 'Converted to Loan'
+    ? value
+    : 'All'
+}
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -33,6 +42,8 @@ function formatCurrency(value: number) {
 
 export function LoanRequestsPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const requestedQuickFilter = searchParams.get('quick')
 
   const [loanRequests, setLoanRequests] = useState<LoanRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -40,7 +51,9 @@ export function LoanRequestsPage() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('All')
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>(() =>
+    getInitialQuickFilter(requestedQuickFilter),
+  )
 
   useEffect(() => {
     let isMounted = true
