@@ -5,6 +5,7 @@ export const internalContacts = [
   'Israel Soto',
   'Oswaldo Suescún',
   'Daniel Fuente',
+  'Cristian Aguilera',
   'Jimena Ginetti',
   'Nicolás Steck',
 ]
