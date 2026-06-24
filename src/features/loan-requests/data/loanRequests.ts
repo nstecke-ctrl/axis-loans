@@ -27,6 +27,7 @@ export type LoanRequest = {
   requesterEmail: string
   requesterPhone: string
   requesterType: string
+  requestedHandler: string
   requestedUseCase: string
   destinationCountry: string
   destinationCity: string
@@ -51,6 +52,7 @@ export type CreateLoanRequestInput = {
   requesterEmail: string
   requesterPhone: string
   requesterType: string
+  requestedHandler: string
   requestedUseCase: string
   destinationCountry: string
   destinationCity: string
@@ -144,6 +146,7 @@ const seedLoanRequests: LoanRequest[] = [
     requesterEmail: 'maria.gonzalez@cliente-demo.cl',
     requesterPhone: '+56 9 5555 1111',
     requesterType: 'End Customer',
+    requestedHandler: 'Tamara Castro',
     requestedUseCase:
       'Evaluation of camera image quality and intercom functionality for a controlled access pilot.',
     destinationCountry: 'Chile',
@@ -166,6 +169,7 @@ const seedLoanRequests: LoanRequest[] = [
     requesterEmail: 'carlos.vega@integrador-demo.cl',
     requesterPhone: '+56 9 5555 2222',
     requesterType: 'Integrator',
+    requestedHandler: 'Estivalía Sanchez',
     requestedUseCase:
       'Outdoor radar and audio validation for a perimeter protection demonstration.',
     destinationCountry: 'Chile',
@@ -190,6 +194,7 @@ const seedLoanRequests: LoanRequest[] = [
     requesterEmail: 'paula.rojas@municipio-demo.cl',
     requesterPhone: '+56 9 5555 3333',
     requesterType: 'End Customer',
+    requestedHandler: 'Mariano Vega',
     requestedUseCase:
       'Temporary evaluation of high-performance PTZ and access control equipment.',
     destinationCountry: 'Chile',
@@ -214,6 +219,7 @@ const seedLoanRequests: LoanRequest[] = [
     requesterEmail: 'sales.team@axis-demo.cl',
     requesterPhone: '+56 9 5555 4444',
     requesterType: 'Internal',
+    requestedHandler: 'Nicolás Steck',
     requestedUseCase:
       'Internal sales demo for customer presentation and solution positioning.',
     destinationCountry: 'Chile',
@@ -319,6 +325,7 @@ export function createLoanRequest(
     requesterEmail: input.requesterEmail,
     requesterPhone: input.requesterPhone,
     requesterType: input.requesterType,
+    requestedHandler: input.requestedHandler,
     requestedUseCase: input.requestedUseCase,
     destinationCountry: input.destinationCountry,
     destinationCity: input.destinationCity,

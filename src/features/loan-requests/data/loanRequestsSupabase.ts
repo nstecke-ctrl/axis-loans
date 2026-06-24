@@ -26,6 +26,7 @@ type LoanRequestRow = {
   requester_email: string
   requester_phone: string
   requester_type: string
+  requested_handler: string | null
   requested_use_case: string
   destination_country: string
   destination_city: string
@@ -78,6 +79,7 @@ function mapLoanRequestRowToRequest(
     requesterEmail: row.requester_email,
     requesterPhone: row.requester_phone,
     requesterType: row.requester_type,
+    requestedHandler: row.requested_handler ?? 'Tamara Castro',
     requestedUseCase: row.requested_use_case,
     destinationCountry: row.destination_country,
     destinationCity: row.destination_city,
@@ -116,6 +118,7 @@ const loanRequestSelect = `
   requester_email,
   requester_phone,
   requester_type,
+  requested_handler,
   requested_use_case,
   destination_country,
   destination_city,
@@ -240,6 +243,7 @@ export type CreatePublicLoanRequestInput = {
   requesterEmail: string
   requesterPhone: string
   requesterType: string
+  requestedHandler: string
   requestedUseCase: string
   destinationCountry: string
   destinationCity: string
@@ -266,13 +270,14 @@ export async function createPublicLoanRequestInSupabase(
   input: CreatePublicLoanRequestInput,
 ) {
   const { data, error } = await supabase.rpc(
-    'create_public_loan_request',
+    'create_public_loan_request_v2',
     {
       p_requester_name: input.requesterName,
       p_requester_company: input.requesterCompany,
       p_requester_email: input.requesterEmail,
       p_requester_phone: input.requesterPhone,
       p_requester_type: input.requesterType,
+      p_requested_handler: input.requestedHandler,
       p_requested_use_case: input.requestedUseCase,
       p_destination_country: input.destinationCountry,
       p_destination_city: input.destinationCity,

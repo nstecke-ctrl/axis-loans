@@ -92,6 +92,7 @@ export function LoanRequestsPage() {
           request.requesterCompany,
           request.requesterEmail,
           request.requesterType,
+          request.requestedHandler,
         ].join(' '),
       )
 
@@ -311,6 +312,10 @@ export function LoanRequestsPage() {
                       </th>
 
                       <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
+                        Requested To
+                      </th>
+
+                      <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
                         Preferred Checkout
                       </th>
 
@@ -367,6 +372,10 @@ export function LoanRequestsPage() {
 
                         <td className="whitespace-nowrap px-5 py-4 text-sm text-[#555555]">
                           {request.requesterType}
+                        </td>
+
+                        <td className="whitespace-nowrap px-5 py-4 text-sm text-[#555555]">
+                          {request.requestedHandler}
                         </td>
 
                         <td className="whitespace-nowrap px-5 py-4 text-sm text-[#555555]">

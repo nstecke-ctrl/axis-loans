@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router'
+import { internalContactOptions } from '../../../lib/internalContacts'
 import {
   axisPricelistItems,
   type AxisPricelistItem,
@@ -22,6 +22,7 @@ type PublicRequestForm = {
   email: string
   phone: string
   requesterType: RequesterType
+  requestedHandler: string
   country: string
   city: string
   preferredCheckoutDate: string
@@ -51,6 +52,7 @@ const initialFormState: PublicRequestForm = {
   email: '',
   phone: '',
   requesterType: '',
+  requestedHandler: 'Tamara Castro',
   country: 'Chile',
   city: '',
   preferredCheckoutDate: '',
@@ -132,6 +134,7 @@ export function PublicLoanRequestPage() {
       form.email.trim() &&
       form.phone.trim() &&
       form.requesterType &&
+      form.requestedHandler &&
       form.country.trim() &&
       form.city.trim() &&
       form.preferredCheckoutDate &&
@@ -250,6 +253,7 @@ export function PublicLoanRequestPage() {
         requesterEmail: form.email,
         requesterPhone: form.phone,
         requesterType: form.requesterType,
+        requestedHandler: form.requestedHandler,
         requestedUseCase: form.useCase,
         destinationCountry: form.country,
         destinationCity: form.city,
@@ -288,13 +292,6 @@ export function PublicLoanRequestPage() {
     }
   }
 
-  function resetRequestForm() {
-    setForm(initialFormState)
-    setEquipmentLines([createEmptyEquipmentLine()])
-    setSubmittedRequest(null)
-    setSubmitError(null)
-  }
-
   if (submittedRequest) {
     return (
       <div className="min-h-screen bg-[#f5f5f3] text-[#171717]">
@@ -306,12 +303,10 @@ export function PublicLoanRequestPage() {
               className="h-auto w-full max-w-[220px]"
             />
 
-            <Link
-              to="/"
-              className="inline-flex items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
-            >
-              Back to Sign In
-            </Link>
+            <p className="max-w-md text-sm leading-6 text-[#666666] md:text-right">
+              Your request was received. The internal team will review it and
+              contact you if more information is needed.
+            </p>
           </div>
         </header>
 
@@ -363,6 +358,11 @@ export function PublicLoanRequestPage() {
                   <SummaryField
                     label="Requester Type"
                     value={submittedRequest.form.requesterType}
+                  />
+
+                  <SummaryField
+                    label="Requested To"
+                    value={submittedRequest.form.requestedHandler}
                   />
 
                   <SummaryField
@@ -511,13 +511,14 @@ export function PublicLoanRequestPage() {
               </article>
 
               <article className="rounded-3xl border border-[#e5e5e2] bg-white p-6 shadow-sm">
-                <button
-                  type="button"
-                  onClick={resetRequestForm}
-                  className="inline-flex w-full items-center justify-center rounded-xl bg-[#181818] px-5 py-3 text-sm font-semibold text-white transition hover:bg-black"
-                >
-                  Submit Another Request
-                </button>
+                <p className="text-sm font-semibold text-[#171717]">
+                  Request submitted
+                </p>
+
+                <p className="mt-3 text-sm leading-7 text-[#555555]">
+                  You may now close this page. The internal team will continue
+                  the review process from Demo Assets Control.
+                </p>
               </article>
             </aside>
           </div>
@@ -542,12 +543,10 @@ export function PublicLoanRequestPage() {
             </p>
           </div>
 
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
-          >
-            Back to Sign In
-          </Link>
+          <p className="max-w-md text-sm leading-6 text-[#666666] md:text-right">
+            Complete the request below. The internal login is not required for
+            this form.
+          </p>
         </div>
       </header>
 
@@ -623,6 +622,13 @@ export function PublicLoanRequestPage() {
                     { label: 'Internal', value: 'Internal' },
                     { label: 'Other', value: 'Other' },
                   ]}
+                />
+
+                <SelectField
+                  label="Requested To"
+                  value={form.requestedHandler}
+                  onChange={(value) => updateForm('requestedHandler', value)}
+                  options={internalContactOptions}
                 />
 
                 <TextField

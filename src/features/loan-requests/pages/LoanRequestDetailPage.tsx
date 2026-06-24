@@ -316,6 +316,11 @@ export function LoanRequestDetailPage() {
                 />
 
                 <DetailField
+                  label="Requested To"
+                  value={request.requestedHandler}
+                />
+
+                <DetailField
                   label="Destination"
                   value={`${request.destinationCity}, ${request.destinationCountry}`}
                 />
@@ -633,4 +638,3 @@ function DetailBlock({
     </div>
   )
 }
-

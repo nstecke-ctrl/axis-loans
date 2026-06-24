@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
+import { internalContactOptions } from '../../../lib/internalContacts'
 import {
   getEquipmentStatusTone,
   type EquipmentItem,
@@ -20,6 +21,7 @@ type NewLoanForm = {
   country: string
   city: string
   address: string
+  checkoutHandler: string
   responsible: string
   reason: string
   projectName: string
@@ -43,6 +45,7 @@ const defaultFormState: NewLoanForm = {
   country: 'Chile',
   city: '',
   address: '',
+  checkoutHandler: 'Tamara Castro',
   responsible: 'Nicolás Steck',
   reason: '',
   projectName: '',
@@ -87,6 +90,7 @@ function buildFormFromRequest(request: LoanRequest): NewLoanForm {
     country: request.destinationCountry,
     city: request.destinationCity,
     address: '',
+    checkoutHandler: request.requestedHandler,
     responsible: 'Nicolás Steck',
     reason: 'Requested Demo Equipment',
     projectName: '',
@@ -244,6 +248,7 @@ export function NewLoanPage() {
   const isFormReady = Boolean(
     form.recipientType &&
       form.company &&
+      form.checkoutHandler &&
       form.responsible &&
       form.reason &&
       form.checkoutDate &&
@@ -292,6 +297,7 @@ export function NewLoanPage() {
           contactName: form.contactName,
           contactEmail: form.contactEmail,
           contactPhone: form.contactPhone,
+          checkoutHandler: form.checkoutHandler,
           responsible: form.responsible,
           reason: form.reason,
           projectName: form.projectName || undefined,
@@ -810,14 +816,17 @@ export function NewLoanPage() {
 
               <div className="mt-6 grid gap-5 md:grid-cols-2">
                 <SelectField
-                  label="Internal Owner"
+                  label="Delivered By"
+                  value={form.checkoutHandler}
+                  onChange={(value) => updateForm('checkoutHandler', value)}
+                  options={internalContactOptions}
+                />
+
+                <SelectField
+                  label="Follow-Up Owner"
                   value={form.responsible}
                   onChange={(value) => updateForm('responsible', value)}
-                  options={[
-                    { label: 'Nicolás Steck', value: 'Nicolás Steck' },
-                    { label: 'Pre-Sales Team', value: 'Pre-Sales Team' },
-                    { label: 'Sales Team', value: 'Sales Team' },
-                  ]}
+                  options={internalContactOptions}
                 />
 
                 <SelectField
@@ -1000,7 +1009,12 @@ export function NewLoanPage() {
                 />
 
                 <SummaryField
-                  label="Internal Owner"
+                  label="Delivered By"
+                  value={form.checkoutHandler || 'Pending'}
+                />
+
+                <SummaryField
+                  label="Follow-Up Owner"
                   value={form.responsible || 'Pending'}
                 />
 

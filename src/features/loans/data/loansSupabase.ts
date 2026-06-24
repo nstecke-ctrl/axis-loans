@@ -31,6 +31,7 @@ type LoanRow = {
   contact_name: string | null
   contact_email: string | null
   contact_phone: string | null
+  checkout_handler: string | null
   responsible: string
   reason: string
   project_name: string | null
@@ -43,6 +44,16 @@ type LoanRow = {
   status: LoanDisplayStatus
   notes: string | null
   loan_items?: LoanItemRow[]
+  loan_requests?:
+    | {
+        msrp_total_amount: number | string
+        responsibility_text: string | null
+      }
+    | Array<{
+        msrp_total_amount: number | string
+        responsibility_text: string | null
+      }>
+    | null
 }
 
 type CreateLoanRpcResponse = {
@@ -87,6 +98,10 @@ function mapLoanEquipmentItem(row: LoanItemRow): LoanEquipmentItem | null {
 }
 
 function mapLoanRowToLoan(row: LoanRow): LoanItem {
+  const sourceRequest = Array.isArray(row.loan_requests)
+    ? row.loan_requests[0]
+    : row.loan_requests
+
   return {
     code: row.code,
     recipientType: row.recipient_type,
@@ -94,6 +109,7 @@ function mapLoanRowToLoan(row: LoanRow): LoanItem {
     contactName: row.contact_name ?? '',
     contactEmail: row.contact_email ?? '',
     contactPhone: row.contact_phone ?? '',
+    checkoutHandler: row.checkout_handler ?? 'Tamara Castro',
     responsible: row.responsible,
     reason: row.reason,
     projectName: row.project_name ?? undefined,
@@ -106,10 +122,18 @@ function mapLoanRowToLoan(row: LoanRow): LoanItem {
     actualClosedDate: formatDatabaseDate(row.actual_closed_date),
     status: row.status,
     notes: row.notes ?? undefined,
+    msrpTotalAmount: sourceRequest
+      ? parseNumericValue(sourceRequest.msrp_total_amount)
+      : undefined,
+    responsibilityText: sourceRequest?.responsibility_text ?? undefined,
     equipment: (row.loan_items ?? [])
       .map(mapLoanEquipmentItem)
       .filter((item): item is LoanEquipmentItem => item !== null),
   }
+}
+
+function parseNumericValue(value: number | string) {
+  return typeof value === 'number' ? value : Number(value)
 }
 
 const loanSelect = `
@@ -120,6 +144,7 @@ const loanSelect = `
   contact_name,
   contact_email,
   contact_phone,
+  checkout_handler,
   responsible,
   reason,
   project_name,
@@ -131,6 +156,10 @@ const loanSelect = `
   actual_closed_date,
   status,
   notes,
+  loan_requests (
+    msrp_total_amount,
+    responsibility_text
+  ),
   loan_items (
     item_status,
     returned_at,
@@ -183,13 +212,14 @@ export async function createInternalLoanInSupabase(
   input: CreateLoanInput,
   sourceRequestCode?: string,
 ) {
-  const { data, error } = await supabase.rpc('create_internal_loan', {
+  const { data, error } = await supabase.rpc('create_internal_loan_v2', {
     p_source_request_code: sourceRequestCode ?? '',
     p_recipient_type: input.recipientType,
     p_company: input.company,
     p_contact_name: input.contactName,
     p_contact_email: input.contactEmail,
     p_contact_phone: input.contactPhone,
+    p_checkout_handler: input.checkoutHandler,
     p_responsible: input.responsible,
     p_reason: input.reason,
     p_project_name: input.projectName ?? '',
@@ -288,6 +318,7 @@ export type UpdateLoanProfileInput = {
   checkoutDate: string
   expectedReturnDate: string
   notes?: string
+  checkoutHandler: string
 }
 
 type UpdateLoanProfileRpcResponse = {
@@ -302,13 +333,14 @@ export async function updateLoanProfileInSupabase(
 
   const performedBy = userData.user?.email ?? 'Administrator'
 
-  const { data, error } = await supabase.rpc('update_loan_profile', {
+  const { data, error } = await supabase.rpc('update_loan_profile_v2', {
     p_loan_code: input.loanCode,
     p_recipient_type: input.recipientType,
     p_company: input.company,
     p_contact_name: input.contactName,
     p_contact_email: input.contactEmail,
     p_contact_phone: input.contactPhone,
+    p_checkout_handler: input.checkoutHandler,
     p_responsible: input.responsible,
     p_reason: input.reason,
     p_project_name: input.projectName ?? '',

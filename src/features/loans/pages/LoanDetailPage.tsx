@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAppRole } from '../../../components/auth/useAppRole'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
+import { internalContactOptions } from '../../../lib/internalContacts'
 import { generateLoanDocumentPdf } from '../utils/generateLoanDocumentPdf'
 import {
   getLoanEquipmentStatusTone,
@@ -19,6 +20,7 @@ type LoanEditForm = {
   contactName: string
   contactEmail: string
   contactPhone: string
+  checkoutHandler: string
   responsible: string
   reason: string
   projectName: string
@@ -46,6 +48,7 @@ function buildInitialEditForm(loan: LoanItem): LoanEditForm {
     contactName: loan.contactName,
     contactEmail: loan.contactEmail,
     contactPhone: loan.contactPhone,
+    checkoutHandler: loan.checkoutHandler,
     responsible: loan.responsible,
     reason: loan.reason,
     projectName: loan.projectName ?? '',
@@ -161,6 +164,7 @@ export function LoanDetailPage() {
     editForm &&
       editForm.recipientType &&
       editForm.company.trim() &&
+      editForm.checkoutHandler &&
       editForm.responsible &&
       editForm.reason &&
       editForm.country.trim() &&
@@ -179,6 +183,7 @@ export function LoanDetailPage() {
         editForm.contactName.trim() !== loan.contactName ||
         editForm.contactEmail.trim() !== loan.contactEmail ||
         editForm.contactPhone.trim() !== loan.contactPhone ||
+        editForm.checkoutHandler !== loan.checkoutHandler ||
         editForm.responsible !== loan.responsible ||
         editForm.reason !== loan.reason ||
         editForm.projectName.trim() !== (loan.projectName ?? '') ||
@@ -213,6 +218,7 @@ export function LoanDetailPage() {
         contactName: editForm.contactName.trim(),
         contactEmail: editForm.contactEmail.trim(),
         contactPhone: editForm.contactPhone.trim(),
+        checkoutHandler: editForm.checkoutHandler,
         responsible: editForm.responsible,
         reason: editForm.reason,
         projectName: editForm.projectName.trim() || undefined,
@@ -473,14 +479,19 @@ export function LoanDetailPage() {
               />
 
               <SelectField
-                label="Internal Owner"
+                label="Delivered By"
+                value={editForm.checkoutHandler}
+                onChange={(value) =>
+                  updateEditForm('checkoutHandler', value)
+                }
+                options={internalContactOptions}
+              />
+
+              <SelectField
+                label="Follow-Up Owner"
                 value={editForm.responsible}
                 onChange={(value) => updateEditForm('responsible', value)}
-                options={[
-                  { label: 'Nicolás Steck', value: 'Nicolás Steck' },
-                  { label: 'Pre-Sales Team', value: 'Pre-Sales Team' },
-                  { label: 'Sales Team', value: 'Sales Team' },
-                ]}
+                options={internalContactOptions}
               />
 
               <SelectField
@@ -650,7 +661,12 @@ export function LoanDetailPage() {
 
               <div className="mt-6 grid gap-5 md:grid-cols-2">
                 <DetailField
-                  label="Internal Owner"
+                  label="Delivered By"
+                  value={loan.checkoutHandler}
+                />
+
+                <DetailField
+                  label="Follow-Up Owner"
                   value={loan.responsible}
                 />
 

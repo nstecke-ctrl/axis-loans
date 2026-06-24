@@ -13,6 +13,19 @@ function currentDocumentDate() {
   return new Intl.DateTimeFormat('en-GB').format(new Date())
 }
 
+function formatCurrency(value?: number) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return 'Not linked to MSRP'
+  }
+
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
 function parseDisplayDate(value?: string) {
   if (!value || !value.includes('/')) {
     return null
@@ -194,7 +207,7 @@ export async function generateLoanDocumentPdf(loan: LoanItem) {
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(90, 90, 90)
   doc.text(`Company: ${loan.company}`, 305, 140)
-  doc.text(`Responsible: ${loan.responsible}`, 305, 158)
+  doc.text(`Follow-up owner: ${loan.responsible}`, 305, 158)
   doc.text(`Equipment count: ${loan.equipment.length}`, 305, 176)
 
   // Recipient section
@@ -261,7 +274,8 @@ export async function generateLoanDocumentPdf(loan: LoanItem) {
       },
     },
     body: detailRows([
-      ['Internal Owner', emptyFallback(loan.responsible)],
+      ['Delivered By', emptyFallback(loan.checkoutHandler)],
+      ['Follow-Up Owner', emptyFallback(loan.responsible)],
       ['Reason', emptyFallback(loan.reason)],
       ['Associated Project', emptyFallback(loan.projectName)],
       ['Checkout Date', emptyFallback(loan.checkoutDate)],
@@ -277,11 +291,50 @@ export async function generateLoanDocumentPdf(loan: LoanItem) {
     (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable
       ?.finalY ?? 520
 
-  // Equipment section
-  drawSectionTitle(doc, 'Equipment Included in the Loan', afterManagementY + 28)
+  drawSectionTitle(doc, 'Responsibility and MSRP Reference', afterManagementY + 28)
 
   autoTable(doc, {
     startY: afterManagementY + 58,
+    theme: 'grid',
+    margin: { left: 40, right: 40 },
+    styles: {
+      font: 'helvetica',
+      fontSize: 9,
+      cellPadding: 6,
+      lineColor: [230, 230, 226],
+      lineWidth: 0.5,
+    },
+    columnStyles: {
+      0: {
+        fontStyle: 'bold',
+        fillColor: [250, 250, 248],
+        cellWidth: 150,
+      },
+      1: {
+        cellWidth: 365,
+      },
+    },
+    body: detailRows([
+      ['MSRP Exposure', formatCurrency(loan.msrpTotalAmount)],
+      [
+        'Responsibility Note',
+        emptyFallback(
+          loan.responsibilityText ??
+            'The recipient acknowledges that lost, damaged, or unreturned equipment may require replacement or payment according to the MSRP reference shown in this document.',
+        ),
+      ],
+    ]),
+  })
+
+  const afterResponsibilityY =
+    (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable
+      ?.finalY ?? afterManagementY + 150
+
+  // Equipment section
+  drawSectionTitle(doc, 'Equipment Included in the Loan', afterResponsibilityY + 28)
+
+  autoTable(doc, {
+    startY: afterResponsibilityY + 58,
     theme: 'striped',
     margin: { left: 40, right: 40 },
     headStyles: {
@@ -364,7 +417,7 @@ export async function generateLoanDocumentPdf(loan: LoanItem) {
 
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(90, 90, 90)
-  doc.text('Name / Signature', 40, lineY + 34)
+  doc.text(loan.checkoutHandler || 'Name / Signature', 40, lineY + 34)
   doc.text('Name / Signature', 375, lineY + 34)
 
   const returnLineY = lineY + 85
