@@ -328,7 +328,7 @@ export async function createPublicLoanRequestInSupabase(
     )
   }
 
-  void notifyLoanRequestSubmitted(createdRequest.request_code).catch(() => {
+  await notifyLoanRequestSubmitted(createdRequest.request_code).catch(() => {
     // Email is helpful, but the saved request is the source of truth.
   })
 
