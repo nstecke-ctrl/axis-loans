@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
+import { useAppRole } from '../../../components/auth/useAppRole'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import {
   getLoanRequestStatusTone,
@@ -20,6 +21,7 @@ function formatCurrency(value: number) {
 }
 
 export function LoanRequestDetailPage() {
+  const { permissions } = useAppRole()
   const navigate = useNavigate()
   const { requestCode } = useParams()
 
@@ -482,46 +484,48 @@ export function LoanRequestDetailPage() {
                 </div>
               )}
 
-              <div className="mt-6 space-y-3">
-                <button
-                  type="button"
-                  onClick={handleApprove}
-                  disabled={isSavingDecision}
-                  className={`inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition ${
-                    isSavingDecision
-                      ? 'cursor-not-allowed bg-[#ecece8] text-[#888888]'
-                      : 'bg-[#ffda00] text-[#111111] hover:bg-[#f2cd00]'
-                  }`}
-                >
-                  {isSavingDecision ? 'Saving...' : 'Approve Request'}
-                </button>
+              {permissions.canReviewRequests && (
+                <div className="mt-6 space-y-3">
+                  <button
+                    type="button"
+                    onClick={handleApprove}
+                    disabled={isSavingDecision}
+                    className={`inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                      isSavingDecision
+                        ? 'cursor-not-allowed bg-[#ecece8] text-[#888888]'
+                        : 'bg-[#ffda00] text-[#111111] hover:bg-[#f2cd00]'
+                    }`}
+                  >
+                    {isSavingDecision ? 'Saving...' : 'Approve Request'}
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={handleReject}
-                  disabled={isSavingDecision}
-                  className={`inline-flex w-full items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition ${
-                    isSavingDecision
-                      ? 'cursor-not-allowed border-[#e5e5e2] bg-[#ecece8] text-[#888888]'
-                      : 'border-red-200 bg-red-50 text-red-800 hover:bg-red-100'
-                  }`}
-                >
-                  {isSavingDecision ? 'Saving...' : 'Reject Request'}
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleReject}
+                    disabled={isSavingDecision}
+                    className={`inline-flex w-full items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                      isSavingDecision
+                        ? 'cursor-not-allowed border-[#e5e5e2] bg-[#ecece8] text-[#888888]'
+                        : 'border-red-200 bg-red-50 text-red-800 hover:bg-red-100'
+                    }`}
+                  >
+                    {isSavingDecision ? 'Saving...' : 'Reject Request'}
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={handleConvertToLoan}
-                  disabled={request.status !== 'Approved'}
-                  className={`inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition ${
-                    request.status === 'Approved'
-                      ? 'bg-[#181818] text-white hover:bg-black'
-                      : 'cursor-not-allowed bg-[#ecece8] text-[#888888]'
-                  }`}
-                >
-                  Convert to Loan
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={handleConvertToLoan}
+                    disabled={request.status !== 'Approved'}
+                    className={`inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                      request.status === 'Approved'
+                        ? 'bg-[#181818] text-white hover:bg-black'
+                        : 'cursor-not-allowed bg-[#ecece8] text-[#888888]'
+                    }`}
+                  >
+                    Convert to Loan
+                  </button>
+                </div>
+              )}
 
               <p className="mt-4 text-sm leading-7 text-[#666666]">
                 Conversion is available only after approval. The conversion
@@ -629,5 +633,4 @@ function DetailBlock({
     </div>
   )
 }
-
 

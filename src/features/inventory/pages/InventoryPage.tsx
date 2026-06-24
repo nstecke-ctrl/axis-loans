@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
+import { useAppRole } from '../../../components/auth/useAppRole'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import {
   getEquipmentStatusTone,
@@ -19,6 +20,8 @@ function normalizeSearchText(value: string) {
 }
 
 export function InventoryPage() {
+  const { permissions } = useAppRole()
+
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -175,21 +178,23 @@ export function InventoryPage() {
             </h2>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link
-  to="/inventory/import"
-  className="inline-flex items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
->
-  Import Excel
-</Link>
+          {permissions.canManageEquipment && (
+            <div className="flex flex-wrap gap-3">
+              <Link
+                to="/inventory/import"
+                className="inline-flex items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+              >
+                Import Excel
+              </Link>
 
-            <Link
-              to="/inventory/new"
-              className="inline-flex items-center justify-center rounded-xl bg-[#ffda00] px-4 py-2.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f2cd00]"
-            >
-              New Equipment
-            </Link>
-          </div>
+              <Link
+                to="/inventory/new"
+                className="inline-flex items-center justify-center rounded-xl bg-[#ffda00] px-4 py-2.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f2cd00]"
+              >
+                New Equipment
+              </Link>
+            </div>
+          )}
         </div>
       </header>
 

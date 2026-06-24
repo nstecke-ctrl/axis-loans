@@ -67,7 +67,7 @@ export function LoginPage() {
       <div className="flex min-h-screen items-center justify-center bg-[#f5f5f3] px-6 text-[#171717]">
         <div className="rounded-3xl border border-[#e5e5e2] bg-white px-8 py-7 text-center shadow-sm">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#666666]">
-            Axis Demo Assets
+            Demo Assets Control
           </p>
 
           <p className="mt-3 text-base font-medium text-[#171717]">
@@ -97,7 +97,7 @@ export function LoginPage() {
               </p>
 
               <h1 className="mt-5 text-5xl font-semibold leading-tight tracking-tight text-white">
-                Axis Demo Assets
+                Demo Assets Control
               </h1>
 
               <p className="mt-5 text-xl leading-8 text-white/72">
@@ -155,7 +155,7 @@ export function LoginPage() {
 
             <div className="mt-10 lg:mt-0">
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#666666]">
-                Axis Demo Assets
+                Demo Assets Control
               </p>
 
               <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#171717]">

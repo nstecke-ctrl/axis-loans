@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
+import { useAppRole } from '../../../components/auth/useAppRole'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import {
   getEquipmentStatusTone,
@@ -78,6 +79,7 @@ function buildInitialEditForm(
 }
 
 export function EquipmentDetailPage() {
+  const { permissions } = useAppRole()
   const { equipmentCode } = useParams()
 
   const [equipment, setEquipment] = useState<EquipmentItem | null>(null)
@@ -460,30 +462,33 @@ export function EquipmentDetailPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {equipment.status === 'On Loan' ? (
-              <button
-                disabled
-                className="cursor-not-allowed rounded-xl border border-[#e5e5e2] bg-[#ecece8] px-4 py-2.5 text-sm font-semibold text-[#888888]"
-              >
-                Status Locked While On Loan
-              </button>
-            ) : (
+            {permissions.canChangeEquipmentStatus &&
+              (equipment.status === 'On Loan' ? (
+                <button
+                  disabled
+                  className="cursor-not-allowed rounded-xl border border-[#e5e5e2] bg-[#ecece8] px-4 py-2.5 text-sm font-semibold text-[#888888]"
+                >
+                  Status Locked While On Loan
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openStatusEditor}
+                  className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                >
+                  Change Status
+                </button>
+              ))}
+
+            {permissions.canManageEquipment && (
               <button
                 type="button"
-                onClick={openStatusEditor}
-                className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                onClick={openEditForm}
+                className="rounded-xl bg-[#ffda00] px-4 py-2.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f2cd00]"
               >
-                Change Status
+                Edit Equipment
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={openEditForm}
-              className="rounded-xl bg-[#ffda00] px-4 py-2.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f2cd00]"
-            >
-              Edit Equipment
-            </button>
           </div>
         </div>
       </header>

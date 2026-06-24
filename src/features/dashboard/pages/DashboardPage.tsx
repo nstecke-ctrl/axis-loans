@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
+import { useAppRole } from '../../../components/auth/useAppRole'
 import type { EquipmentItem } from '../../inventory/data/equipment'
 import { fetchEquipmentItemsFromSupabase } from '../../inventory/data/equipmentSupabase'
 import type { LoanRequest } from '../../loan-requests/data/loanRequests'
@@ -26,6 +27,8 @@ function formatCurrency(value: number) {
 }
 
 export function DashboardPage() {
+  const { permissions } = useAppRole()
+
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([])
   const [loanRequests, setLoanRequests] = useState<LoanRequest[]>([])
   const [overdueLoans, setOverdueLoans] = useState<DashboardLoanSummary[]>([])
@@ -146,26 +149,32 @@ export function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link
-              to="/loans"
-              className="inline-flex items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
-            >
-              Return Equipment
-            </Link>
+            {permissions.canManageLoans && (
+              <>
+                <Link
+                  to="/loans"
+                  className="inline-flex items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                >
+                  Return Equipment
+                </Link>
 
-            <Link
-              to="/loans/new"
-              className="inline-flex items-center justify-center rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
-            >
-              New Loan
-            </Link>
+                <Link
+                  to="/loans/new"
+                  className="inline-flex items-center justify-center rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+                >
+                  New Loan
+                </Link>
+              </>
+            )}
 
-            <Link
-              to="/inventory/new"
-              className="inline-flex items-center justify-center rounded-xl bg-[#ffda00] px-4 py-2.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f2cd00]"
-            >
-              New Equipment
-            </Link>
+            {permissions.canManageEquipment && (
+              <Link
+                to="/inventory/new"
+                className="inline-flex items-center justify-center rounded-xl bg-[#ffda00] px-4 py-2.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f2cd00]"
+              >
+                New Equipment
+              </Link>
+            )}
           </div>
         </div>
       </header>

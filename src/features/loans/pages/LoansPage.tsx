@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { useAppRole } from '../../../components/auth/useAppRole'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import {
   getLoanStatusTone,
@@ -19,6 +20,7 @@ function normalizeSearchText(value: string) {
 }
 
 export function LoansPage() {
+  const { permissions } = useAppRole()
   const navigate = useNavigate()
   const [loans, setLoans] = useState<LoanItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -178,21 +180,23 @@ export function LoansPage() {
             </h2>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link
-              to="/loans"
-              className="inline-flex items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
-            >
-              Return Equipment
-            </Link>
+          {permissions.canManageLoans && (
+            <div className="flex flex-wrap gap-3">
+              <Link
+                to="/loans"
+                className="inline-flex items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+              >
+                Return Equipment
+              </Link>
 
-            <Link
-              to="/loans/new"
-              className="inline-flex items-center justify-center rounded-xl bg-[#ffda00] px-4 py-2.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f2cd00]"
-            >
-              New Loan
-            </Link>
-          </div>
+              <Link
+                to="/loans/new"
+                className="inline-flex items-center justify-center rounded-xl bg-[#ffda00] px-4 py-2.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f2cd00]"
+              >
+                New Loan
+              </Link>
+            </div>
+          )}
         </div>
       </header>
 

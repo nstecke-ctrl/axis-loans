@@ -538,7 +538,7 @@ export function PublicLoanRequestPage() {
             />
 
             <p className="mt-5 text-sm font-semibold uppercase tracking-[0.22em] text-[#666666]">
-              Axis Demo Assets
+              Demo Assets Control
             </p>
           </div>
 

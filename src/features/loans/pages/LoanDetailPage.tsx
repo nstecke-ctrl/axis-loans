@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
+import { useAppRole } from '../../../components/auth/useAppRole'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import { generateLoanDocumentPdf } from '../utils/generateLoanDocumentPdf'
 import {
@@ -58,6 +59,7 @@ function buildInitialEditForm(loan: LoanItem): LoanEditForm {
 }
 
 export function LoanDetailPage() {
+  const { permissions } = useAppRole()
   const { loanCode } = useParams()
 
   const [loan, setLoan] = useState<LoanItem | null>(null)
@@ -351,29 +353,34 @@ export function LoanDetailPage() {
               Download Loan PDF
             </button>
 
-            <button
-              type="button"
-              onClick={openEditForm}
-              className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
-            >
-              Edit Loan
-            </button>
-
-            {returnActionEnabled ? (
-              <Link
-                to={`/loans/${loan.code}/return`}
-                className="rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
-              >
-                Register Return
-              </Link>
-            ) : (
+            {permissions.canManageLoans && (
               <button
-                disabled
-                className="cursor-not-allowed rounded-xl bg-[#ecece8] px-4 py-2.5 text-sm font-semibold text-[#888888]"
+                type="button"
+                onClick={openEditForm}
+                className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
               >
-                {loan.status === 'Returned' ? 'Loan Closed' : 'Loan Cancelled'}
+                Edit Loan
               </button>
             )}
+
+            {permissions.canManageLoans &&
+              (returnActionEnabled ? (
+                <Link
+                  to={`/loans/${loan.code}/return`}
+                  className="rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+                >
+                  Register Return
+                </Link>
+              ) : (
+                <button
+                  disabled
+                  className="cursor-not-allowed rounded-xl bg-[#ecece8] px-4 py-2.5 text-sm font-semibold text-[#888888]"
+                >
+                  {loan.status === 'Returned'
+                    ? 'Loan Closed'
+                    : 'Loan Cancelled'}
+                </button>
+              ))}
           </div>
         </div>
       </header>
