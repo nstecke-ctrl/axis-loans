@@ -156,7 +156,7 @@ const loanSelect = `
   actual_closed_date,
   status,
   notes,
-  loan_requests (
+  loan_requests!loans_source_request_id_fkey (
     msrp_total_amount,
     responsibility_text
   ),
