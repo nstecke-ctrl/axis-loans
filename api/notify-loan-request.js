@@ -22,60 +22,29 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;')
 }
 
-function getAppUrl() {
-  if (process.env.APP_BASE_URL) {
-    return process.env.APP_BASE_URL.replace(/\/$/, '')
-  }
-
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`
-  }
-
-  return ''
-}
-
-function buildEmailHtml({ appUrl, request }) {
-  const detailUrl = appUrl
-    ? `${appUrl}/loan-requests/${encodeURIComponent(request.code)}`
-    : ''
-
+function buildEmailHtml({ request }) {
   return `
     <div style="font-family:Inter,Arial,sans-serif;line-height:1.5;color:#171717">
-      <h1 style="font-size:22px;margin:0 0 12px">New demo equipment request</h1>
-      <p style="margin:0 0 18px">
-        A new request was submitted for <strong>${escapeHtml(request.requested_handler)}</strong>.
+      <h1 style="font-size:20px;margin:0 0 12px">Asset Loan Control - ${escapeHtml(request.code)}</h1>
+      <p style="margin:0 0 16px">
+        A new equipment request was assigned to ${escapeHtml(request.requested_handler)}.
       </p>
-
-      <table style="border-collapse:collapse;width:100%;max-width:640px">
-        <tbody>
-          <tr><td style="padding:8px;border:1px solid #e5e5e2"><strong>Request</strong></td><td style="padding:8px;border:1px solid #e5e5e2">${escapeHtml(request.code)}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #e5e5e2"><strong>Requester</strong></td><td style="padding:8px;border:1px solid #e5e5e2">${escapeHtml(request.requester_name)}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #e5e5e2"><strong>Company</strong></td><td style="padding:8px;border:1px solid #e5e5e2">${escapeHtml(request.requester_company)}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #e5e5e2"><strong>Email</strong></td><td style="padding:8px;border:1px solid #e5e5e2">${escapeHtml(request.requester_email)}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #e5e5e2"><strong>Expected return</strong></td><td style="padding:8px;border:1px solid #e5e5e2">${escapeHtml(request.expected_return_date)}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #e5e5e2"><strong>MSRP total</strong></td><td style="padding:8px;border:1px solid #e5e5e2">${formatCurrency(request.msrp_total_amount)}</td></tr>
-        </tbody>
-      </table>
-
-      <p style="margin:18px 0 0"><strong>Use case</strong></p>
-      <p style="margin:4px 0 18px">${escapeHtml(request.requested_use_case)}</p>
-
-      ${
-        detailUrl
-          ? `<p><a href="${detailUrl}" style="display:inline-block;background:#181818;color:#ffffff;text-decoration:none;padding:10px 14px;border-radius:8px">Review request</a></p>`
-          : ''
-      }
+      <p style="margin:0 0 4px"><strong>Requester:</strong> ${escapeHtml(request.requester_name)}</p>
+      <p style="margin:0 0 4px"><strong>Company:</strong> ${escapeHtml(request.requester_company)}</p>
+      <p style="margin:0 0 4px"><strong>Email:</strong> ${escapeHtml(request.requester_email)}</p>
+      <p style="margin:0 0 4px"><strong>Expected return:</strong> ${escapeHtml(request.expected_return_date)}</p>
+      <p style="margin:0 0 16px"><strong>MSRP total:</strong> ${formatCurrency(request.msrp_total_amount)}</p>
+      <p style="margin:0 0 4px"><strong>Use case:</strong></p>
+      <p style="margin:0">${escapeHtml(request.requested_use_case)}</p>
     </div>
   `
 }
 
-function buildEmailText({ appUrl, request }) {
-  const detailUrl = appUrl
-    ? `${appUrl}/loan-requests/${encodeURIComponent(request.code)}`
-    : ''
-
+function buildEmailText({ request }) {
   return [
-    'New demo equipment request',
+    `Asset Loan Control - ${request.code}`,
+    '',
+    `A new equipment request was assigned to ${request.requested_handler}.`,
     '',
     `Request: ${request.code}`,
     `Requested to: ${request.requested_handler}`,
@@ -86,7 +55,8 @@ function buildEmailText({ appUrl, request }) {
     `MSRP total: ${formatCurrency(request.msrp_total_amount)}`,
     '',
     `Use case: ${request.requested_use_case}`,
-    detailUrl ? `Review: ${detailUrl}` : '',
+    '',
+    'Open Asset Loan Control to review this request.',
   ]
     .filter(Boolean)
     .join('\n')
@@ -190,13 +160,12 @@ export default async function handler(req, res) {
     return
   }
 
-  const appUrl = getAppUrl()
   const emailPayload = {
     from: mailFrom,
     to: [recipient],
-    subject: `New demo request ${request.code} - ${request.requester_company}`,
-    html: buildEmailHtml({ appUrl, request }),
-    text: buildEmailText({ appUrl, request }),
+    subject: `Asset Loan Control ${request.code}`,
+    html: buildEmailHtml({ request }),
+    text: buildEmailText({ request }),
   }
 
   const emailResponse = await fetch('https://api.resend.com/emails', {
