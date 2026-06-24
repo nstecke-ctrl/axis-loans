@@ -16,14 +16,24 @@ type RequesterType =
   | 'Internal'
   | 'Other'
 
+type DestinationCountry =
+  | 'Chile'
+  | 'Bolivia'
+  | 'Argentina'
+  | 'Paraguay'
+  | 'Uruguay'
+
+type PhoneCountryCode = '+56' | '+591' | '+54' | '+595' | '+598'
+
 type PublicRequestForm = {
   requesterName: string
   company: string
   email: string
-  phone: string
+  phoneCountryCode: PhoneCountryCode
+  phoneNumber: string
   requesterType: RequesterType
   requestedHandler: string
-  country: string
+  country: DestinationCountry
   city: string
   preferredCheckoutDate: string
   expectedReturnDate: string
@@ -50,7 +60,8 @@ const initialFormState: PublicRequestForm = {
   requesterName: '',
   company: '',
   email: '',
-  phone: '',
+  phoneCountryCode: '+56',
+  phoneNumber: '',
   requesterType: '',
   requestedHandler: 'Tamara Castro',
   country: 'Chile',
@@ -61,6 +72,26 @@ const initialFormState: PublicRequestForm = {
   additionalNotes: '',
   responsibilityAccepted: false,
 }
+
+const southernConeCountryOptions = [
+  { label: 'Chile', value: 'Chile' },
+  { label: 'Bolivia', value: 'Bolivia' },
+  { label: 'Argentina', value: 'Argentina' },
+  { label: 'Paraguay', value: 'Paraguay' },
+  { label: 'Uruguay', value: 'Uruguay' },
+]
+
+const phoneCountryOptions: Array<{
+  label: string
+  value: PhoneCountryCode
+  digits: number
+}> = [
+  { label: 'Chile +56', value: '+56', digits: 9 },
+  { label: 'Bolivia +591', value: '+591', digits: 8 },
+  { label: 'Argentina +54', value: '+54', digits: 10 },
+  { label: 'Paraguay +595', value: '+595', digits: 9 },
+  { label: 'Uruguay +598', value: '+598', digits: 8 },
+]
 
 function createEmptyEquipmentLine(): RequestedEquipmentLine {
   return {
@@ -97,6 +128,18 @@ function formatDateForDisplay(value: string) {
   return `${day}/${month}/${year}`
 }
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+}
+
+function getPhoneRule(countryCode: PhoneCountryCode) {
+  return phoneCountryOptions.find((option) => option.value === countryCode)
+}
+
+function formatPhoneForStorage(form: PublicRequestForm) {
+  return `${form.phoneCountryCode} ${form.phoneNumber}`
+}
+
 export function PublicLoanRequestPage() {
   const [form, setForm] = useState<PublicRequestForm>(initialFormState)
 
@@ -109,6 +152,12 @@ export function PublicLoanRequestPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const phoneRule = getPhoneRule(form.phoneCountryCode)
+  const emailIsValid = isValidEmail(form.email)
+  const phoneIsValid = Boolean(
+    phoneRule && form.phoneNumber.length === phoneRule.digits,
+  )
 
   const hasInvalidDateRange = Boolean(
     form.preferredCheckoutDate &&
@@ -132,7 +181,9 @@ export function PublicLoanRequestPage() {
     form.requesterName.trim() &&
       form.company.trim() &&
       form.email.trim() &&
-      form.phone.trim() &&
+      emailIsValid &&
+      form.phoneNumber.trim() &&
+      phoneIsValid &&
       form.requesterType &&
       form.requestedHandler &&
       form.country.trim() &&
@@ -156,6 +207,13 @@ export function PublicLoanRequestPage() {
       ...currentForm,
       [field]: value,
     }))
+  }
+
+  function updatePhoneNumber(value: string) {
+    const digitsOnly = value.replace(/\D/g, '')
+    const maxLength = phoneRule?.digits ?? 12
+
+    updateForm('phoneNumber', digitsOnly.slice(0, maxLength))
   }
 
   function updateLineSearch(lineId: string, searchTerm: string) {
@@ -251,7 +309,7 @@ export function PublicLoanRequestPage() {
         requesterName: form.requesterName,
         requesterCompany: form.company,
         requesterEmail: form.email,
-        requesterPhone: form.phone,
+        requesterPhone: formatPhoneForStorage(form),
         requesterType: form.requesterType,
         requestedHandler: form.requestedHandler,
         requestedUseCase: form.useCase,
@@ -352,7 +410,7 @@ export function PublicLoanRequestPage() {
 
                   <SummaryField
                     label="Phone"
-                    value={submittedRequest.form.phone}
+                    value={formatPhoneForStorage(submittedRequest.form)}
                   />
 
                   <SummaryField
@@ -584,6 +642,7 @@ export function PublicLoanRequestPage() {
                   label="Full Name"
                   value={form.requesterName}
                   placeholder="Requester full name"
+                  required
                   onChange={(value) => updateForm('requesterName', value)}
                 />
 
@@ -591,6 +650,7 @@ export function PublicLoanRequestPage() {
                   label="Company"
                   value={form.company}
                   placeholder="Company name"
+                  required
                   onChange={(value) => updateForm('company', value)}
                 />
 
@@ -598,15 +658,49 @@ export function PublicLoanRequestPage() {
                   label="Email"
                   value={form.email}
                   placeholder="email@company.com"
+                  type="email"
+                  required
+                  error={
+                    form.email && !emailIsValid
+                      ? 'Enter a valid email address.'
+                      : undefined
+                  }
                   onChange={(value) => updateForm('email', value)}
                 />
 
-                <TextField
-                  label="Phone"
-                  value={form.phone}
-                  placeholder="+56 9..."
-                  onChange={(value) => updateForm('phone', value)}
-                />
+                <div className="grid gap-3 md:grid-cols-[0.82fr_1fr]">
+                  <SelectField
+                    label="Country Code"
+                    value={form.phoneCountryCode}
+                    onChange={(value) =>
+                      updateForm(
+                        'phoneCountryCode',
+                        value as PhoneCountryCode,
+                      )
+                    }
+                    options={phoneCountryOptions}
+                    required
+                  />
+
+                  <TextField
+                    label="Phone"
+                    value={form.phoneNumber}
+                    placeholder={
+                      form.phoneCountryCode === '+56'
+                        ? '912345678'
+                        : 'Digits only'
+                    }
+                    inputMode="numeric"
+                    maxLength={phoneRule?.digits}
+                    required
+                    error={
+                      form.phoneNumber && !phoneIsValid && phoneRule
+                        ? `${phoneRule.label} requires ${phoneRule.digits} digits.`
+                        : undefined
+                    }
+                    onChange={updatePhoneNumber}
+                  />
+                </div>
 
                 <SelectField
                   label="Requester Type"
@@ -622,6 +716,7 @@ export function PublicLoanRequestPage() {
                     { label: 'Internal', value: 'Internal' },
                     { label: 'Other', value: 'Other' },
                   ]}
+                  required
                 />
 
                 <SelectField
@@ -629,19 +724,24 @@ export function PublicLoanRequestPage() {
                   value={form.requestedHandler}
                   onChange={(value) => updateForm('requestedHandler', value)}
                   options={internalContactOptions}
+                  required
                 />
 
-                <TextField
+                <SelectField
                   label="Country"
                   value={form.country}
-                  placeholder="Chile"
-                  onChange={(value) => updateForm('country', value)}
+                  onChange={(value) =>
+                    updateForm('country', value as DestinationCountry)
+                  }
+                  options={southernConeCountryOptions}
+                  required
                 />
 
                 <TextField
                   label="City"
                   value={form.city}
                   placeholder="Santiago"
+                  required
                   onChange={(value) => updateForm('city', value)}
                 />
               </div>
@@ -786,6 +886,28 @@ export function PublicLoanRequestPage() {
                 <SummaryField
                   label="Company"
                   value={form.company || 'Pending'}
+                />
+
+                <SummaryField
+                  label="Email"
+                  value={
+                    form.email
+                      ? emailIsValid
+                        ? form.email
+                        : 'Invalid email'
+                      : 'Pending'
+                  }
+                />
+
+                <SummaryField
+                  label="Phone"
+                  value={
+                    form.phoneNumber
+                      ? phoneIsValid
+                        ? formatPhoneForStorage(form)
+                        : 'Invalid phone'
+                      : 'Pending'
+                  }
                 />
 
                 <SummaryField
@@ -1065,26 +1187,45 @@ function TextField({
   label,
   value,
   placeholder,
+  type = 'text',
+  inputMode,
+  maxLength,
+  required = false,
+  error,
   onChange,
 }: {
   label: string
   value: string
   placeholder: string
+  type?: 'text' | 'email'
+  inputMode?: 'numeric'
+  maxLength?: number
+  required?: boolean
+  error?: string
   onChange: (value: string) => void
 }) {
   return (
     <div>
       <label className="mb-2 block text-sm font-medium text-[#444444]">
         {label}
+        {required && <span className="text-red-700"> *</span>}
       </label>
 
       <input
-        type="text"
+        type={type}
         value={value}
         placeholder={placeholder}
+        inputMode={inputMode}
+        maxLength={maxLength}
+        required={required}
+        aria-invalid={Boolean(error)}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm text-[#171717] outline-none transition placeholder:text-[#999999] focus:border-[#ffda00]"
+        className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-[#171717] outline-none transition placeholder:text-[#999999] focus:border-[#ffda00] ${
+          error ? 'border-red-300' : 'border-[#d8d8d4]'
+        }`}
       />
+
+      {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
     </div>
   )
 }
@@ -1119,22 +1260,31 @@ function SelectField({
   value,
   onChange,
   options,
+  required = false,
+  error,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   options: Array<{ label: string; value: string }>
+  required?: boolean
+  error?: string
 }) {
   return (
     <div>
       <label className="mb-2 block text-sm font-medium text-[#444444]">
         {label}
+        {required && <span className="text-red-700"> *</span>}
       </label>
 
       <select
         value={value}
+        required={required}
+        aria-invalid={Boolean(error)}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm text-[#171717] outline-none transition focus:border-[#ffda00]"
+        className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-[#171717] outline-none transition focus:border-[#ffda00] ${
+          error ? 'border-red-300' : 'border-[#d8d8d4]'
+        }`}
       >
         {options.map((option) => (
           <option key={`${label}-${option.value}`} value={option.value}>
@@ -1142,6 +1292,8 @@ function SelectField({
           </option>
         ))}
       </select>
+
+      {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
     </div>
   )
 }
