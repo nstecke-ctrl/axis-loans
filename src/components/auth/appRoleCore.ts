@@ -7,11 +7,13 @@ export type RolePermissions = {
   canChangeEquipmentStatus: boolean
   canManageLoans: boolean
   canReviewRequests: boolean
+  canManageUsers: boolean
 }
 
 export type AppRoleContextValue = {
   role: AppRole
   isLoadingRole: boolean
+  isPasswordResetRequired: boolean
   permissions: RolePermissions
 }
 
@@ -23,6 +25,7 @@ const viewerPermissions: RolePermissions = {
   canChangeEquipmentStatus: false,
   canManageLoans: false,
   canReviewRequests: false,
+  canManageUsers: false,
 }
 
 export function getPermissions(role: AppRole): RolePermissions {
@@ -32,6 +35,7 @@ export function getPermissions(role: AppRole): RolePermissions {
       canChangeEquipmentStatus: true,
       canManageLoans: true,
       canReviewRequests: true,
+      canManageUsers: true,
     }
   }
 
@@ -41,6 +45,7 @@ export function getPermissions(role: AppRole): RolePermissions {
       canChangeEquipmentStatus: true,
       canManageLoans: true,
       canReviewRequests: true,
+      canManageUsers: false,
     }
   }
 

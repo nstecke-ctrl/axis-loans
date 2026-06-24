@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
+import { PasswordResetGate } from './components/auth/PasswordResetGate'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { RequirePermission } from './components/auth/RequirePermission'
 import { AppLayout } from './components/layout/AppLayout'
@@ -7,6 +8,16 @@ import { AppLayout } from './components/layout/AppLayout'
 const LoginPage = lazy(() =>
   import('./features/auth/pages/LoginPage').then((module) => ({
     default: module.LoginPage,
+  })),
+)
+const ChangePasswordPage = lazy(() =>
+  import('./features/auth/pages/ChangePasswordPage').then((module) => ({
+    default: module.ChangePasswordPage,
+  })),
+)
+const UserManagementPage = lazy(() =>
+  import('./features/admin/pages/UserManagementPage').then((module) => ({
+    default: module.UserManagementPage,
   })),
 )
 const DashboardPage = lazy(() =>
@@ -93,7 +104,9 @@ function App() {
         <Route
           element={
             <ProtectedRoute>
-              <AppLayout />
+              <PasswordResetGate>
+                <AppLayout />
+              </PasswordResetGate>
             </ProtectedRoute>
           }
         >
@@ -147,7 +160,27 @@ function App() {
           />
 
           <Route path="/movements" element={<MovementsPage />} />
+
+          <Route
+            path="/admin/users"
+            element={
+              <RequirePermission permission="canManageUsers">
+                <UserManagementPage />
+              </RequirePermission>
+            }
+          />
         </Route>
+
+        <Route
+          path="/change-password"
+          element={
+            <ProtectedRoute>
+              <PasswordResetGate>
+                <ChangePasswordPage />
+              </PasswordResetGate>
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

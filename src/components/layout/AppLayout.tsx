@@ -5,20 +5,28 @@ import {
   useNavigate,
 } from 'react-router'
 import type { User } from '@supabase/supabase-js'
+import type { RolePermissions } from '../auth/appRoleCore'
 import { useAppRole } from '../auth/useAppRole'
 import { supabase } from '../../lib/supabase'
 
-const navigationItems = [
+type NavigationItem = {
+  label: string
+  to: string
+  permission?: keyof RolePermissions
+}
+
+const navigationItems: NavigationItem[] = [
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Inventory', to: '/inventory' },
   { label: 'Loans', to: '/loans' },
   { label: 'Loan Requests', to: '/loan-requests' },
   { label: 'Activity Log', to: '/movements' },
+  { label: 'Users', to: '/admin/users', permission: 'canManageUsers' },
 ]
 
 export function AppLayout() {
   const navigate = useNavigate()
-  const { role, isLoadingRole } = useAppRole()
+  const { role, isLoadingRole, permissions } = useAppRole()
 
   const [user, setUser] = useState<User | null>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -84,6 +92,10 @@ export function AppLayout() {
     navigate('/', { replace: true })
   }
 
+  const visibleNavigationItems = navigationItems.filter(
+    (item) => !item.permission || permissions[item.permission],
+  )
+
   return (
     <div className="min-h-screen bg-[#f5f5f3] text-[#171717]">
       <div className="flex min-h-screen">
@@ -117,7 +129,7 @@ export function AppLayout() {
             </p>
 
             <div className="space-y-2">
-              {navigationItems.map((item) => (
+              {visibleNavigationItems.map((item) => (
                 <DesktopNavigationLink
                   key={item.to}
                   label={item.label}
@@ -224,7 +236,7 @@ export function AppLayout() {
               </p>
 
               <div className="space-y-2">
-                {navigationItems.map((item) => (
+                {visibleNavigationItems.map((item) => (
                   <MobileNavigationLink
                     key={item.to}
                     label={item.label}

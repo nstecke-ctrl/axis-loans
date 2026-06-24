@@ -7,6 +7,7 @@ type PermissionName =
   | 'canChangeEquipmentStatus'
   | 'canManageLoans'
   | 'canReviewRequests'
+  | 'canManageUsers'
 
 export function RequirePermission({
   permission,
