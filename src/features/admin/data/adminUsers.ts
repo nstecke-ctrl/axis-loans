@@ -17,8 +17,6 @@ export type AdminUserInput = {
   role: AppRole
 }
 
-export type BulkAdminUserInput = AdminUserInput
-
 export type AdminUserUpdateInput = {
   userId: string
   displayName: string
@@ -29,14 +27,6 @@ export type AdminUserMutationResult = {
   user: AdminUserRecord
   temporaryPassword?: string | null
   created?: boolean
-}
-
-export type BulkAdminUserResult = {
-  users: AdminUserRecord[]
-  createdCount: number
-  updatedCount: number
-  passwordResetCount: number
-  temporaryPassword: string
 }
 
 async function getAuthHeaders() {
@@ -87,29 +77,6 @@ export async function createAdminUser(input: AdminUserInput) {
   })
 
   return parseApiResponse<AdminUserMutationResult>(response)
-}
-
-export async function bulkCreateAdminUsers({
-  users,
-  temporaryPassword,
-  resetExistingPasswords,
-}: {
-  users: BulkAdminUserInput[]
-  temporaryPassword: string
-  resetExistingPasswords: boolean
-}) {
-  const response = await fetch('/api/admin-users', {
-    method: 'POST',
-    headers: await getAuthHeaders(),
-    body: JSON.stringify({
-      action: 'bulkCreate',
-      users,
-      temporaryPassword,
-      resetExistingPasswords,
-    }),
-  })
-
-  return parseApiResponse<BulkAdminUserResult>(response)
 }
 
 export async function updateAdminUser(input: AdminUserUpdateInput) {

@@ -64,12 +64,6 @@ function createTemporaryPassword() {
   return `Dac-${randomBytes(12).toString('base64url')}!9`
 }
 
-function normalizeTemporaryPassword(value) {
-  const password = String(value ?? '').trim()
-
-  return password.length >= 8 ? password : createTemporaryPassword()
-}
-
 function mapUser(authUser, roleRecord) {
   return {
     id: authUser.id,
@@ -237,7 +231,6 @@ async function handleCreateUser(req, res, supabase) {
   const email = normalizeEmail(body.email)
   const role = normalizeRole(body.role)
   const displayName = normalizeDisplayName(body.displayName, email)
-  const requestedTemporaryPassword = body.temporaryPassword
 
   if (!isValidEmail(email)) {
     sendJson(res, 400, { error: 'A valid email address is required.' })
@@ -254,7 +247,7 @@ async function handleCreateUser(req, res, supabase) {
   let created = false
 
   if (!authUser) {
-    temporaryPassword = normalizeTemporaryPassword(requestedTemporaryPassword)
+    temporaryPassword = createTemporaryPassword()
 
     const { data, error } = await supabase.auth.admin.createUser({
       email,
@@ -313,136 +306,6 @@ async function handleCreateUser(req, res, supabase) {
     user: mapUser(authUser, roleRecord),
     temporaryPassword,
     created,
-  })
-}
-
-async function createOrUpdateManagedUser(supabase, input) {
-  const email = normalizeEmail(input.email)
-  const role = normalizeRole(input.role)
-  const displayName = normalizeDisplayName(input.displayName, email)
-  const temporaryPassword = normalizeTemporaryPassword(
-    input.temporaryPassword,
-  )
-  const resetExistingPassword = Boolean(input.resetExistingPassword)
-
-  if (!isValidEmail(email)) {
-    throw new Error(`${email || 'User'} does not have a valid email.`)
-  }
-
-  if (!role) {
-    throw new Error(`${email} does not have a valid role.`)
-  }
-
-  let authUser = await findAuthUserByEmail(supabase, email)
-  let created = false
-  let passwordWasSet = false
-
-  if (!authUser) {
-    const { data, error } = await supabase.auth.admin.createUser({
-      email,
-      password: temporaryPassword,
-      email_confirm: true,
-      user_metadata: {
-        display_name: displayName,
-      },
-    })
-
-    if (error || !data.user) {
-      throw error ?? new Error(`${email} could not be created.`)
-    }
-
-    authUser = data.user
-    created = true
-    passwordWasSet = true
-  } else {
-    const { data, error } = await supabase.auth.admin.updateUserById(
-      authUser.id,
-      {
-        ...(resetExistingPassword ? { password: temporaryPassword } : {}),
-        user_metadata: {
-          ...authUser.user_metadata,
-          display_name: displayName,
-        },
-      },
-    )
-
-    if (error || !data.user) {
-      throw error ?? new Error(`${email} could not be updated.`)
-    }
-
-    authUser = data.user
-    passwordWasSet = resetExistingPassword
-  }
-
-  await assertCanChangeRole(supabase, authUser.id, role)
-
-  const { data: roleRecord, error: roleError } = await supabase
-    .from('app_user_roles')
-    .upsert(
-      {
-        user_id: authUser.id,
-        role,
-        display_name: displayName,
-        password_reset_required: created || passwordWasSet,
-      },
-      { onConflict: 'user_id' },
-    )
-    .select('user_id, role, display_name, password_reset_required')
-    .single()
-
-  if (roleError) {
-    throw roleError
-  }
-
-  return {
-    user: mapUser(authUser, roleRecord),
-    created,
-    passwordWasSet,
-  }
-}
-
-async function handleBulkCreateUsers(req, res, supabase) {
-  const adminCheck = await requireAdmin(req, supabase)
-
-  if (adminCheck.error) {
-    sendJson(res, adminCheck.error.status, { error: adminCheck.error.message })
-    return
-  }
-
-  const body = normalizeBody(req)
-  const users = Array.isArray(body.users) ? body.users : []
-  const temporaryPassword = normalizeTemporaryPassword(body.temporaryPassword)
-  const resetExistingPasswords = Boolean(body.resetExistingPasswords)
-
-  if (users.length === 0) {
-    sendJson(res, 400, { error: 'At least one user is required.' })
-    return
-  }
-
-  if (users.length > 50) {
-    sendJson(res, 400, { error: 'Bulk creation is limited to 50 users.' })
-    return
-  }
-
-  const results = []
-
-  for (const user of users) {
-    const result = await createOrUpdateManagedUser(supabase, {
-      ...user,
-      temporaryPassword,
-      resetExistingPassword: resetExistingPasswords,
-    })
-
-    results.push(result)
-  }
-
-  sendJson(res, 200, {
-    users: results.map((result) => result.user),
-    createdCount: results.filter((result) => result.created).length,
-    updatedCount: results.filter((result) => !result.created).length,
-    passwordResetCount: results.filter((result) => result.passwordWasSet)
-      .length,
-    temporaryPassword,
   })
 }
 
@@ -594,13 +457,6 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const body = normalizeBody(req)
-
-      if (body.action === 'bulkCreate') {
-        await handleBulkCreateUsers(req, res, supabase)
-        return
-      }
-
       await handleCreateUser(req, res, supabase)
       return
     }
