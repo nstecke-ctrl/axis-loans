@@ -1,4 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+import {
+  hasEmailProviderEnv,
+  sendTransactionalEmail,
+} from './_email.js'
 
 const jsonHeaders = {
   'Content-Type': 'application/json',
@@ -183,25 +187,6 @@ async function updateLoanReminderStatus(supabase, loanCode, fields) {
   await supabase.from('loans').update(fields).eq('code', loanCode)
 }
 
-async function sendEmail({ resendApiKey, mailFrom, recipient, payload }) {
-  const emailResponse = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: mailFrom,
-      to: [recipient],
-      ...payload,
-    }),
-  })
-
-  if (!emailResponse.ok) {
-    throw new Error((await emailResponse.text()).slice(0, 1000))
-  }
-}
-
 function isAuthorized(req) {
   const cronSecret = process.env.CRON_SECRET
 
@@ -227,7 +212,6 @@ export default async function handler(req, res) {
 
   const supabaseUrl = process.env.SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const resendApiKey = process.env.RESEND_API_KEY
   const mailFrom = process.env.MAIL_FROM
   const fallbackEmail = process.env.NOTIFICATION_FALLBACK_EMAIL
   const dryRun = req.query?.dryRun === '1' || req.query?.dryRun === 'true'
@@ -238,7 +222,7 @@ export default async function handler(req, res) {
     return
   }
 
-  if (!dryRun && (!resendApiKey || !mailFrom)) {
+  if (!dryRun && !hasEmailProviderEnv()) {
     res.writeHead(200, jsonHeaders)
     res.end(JSON.stringify({ skipped: true, reason: 'Email provider env missing' }))
     return
@@ -354,11 +338,12 @@ export default async function handler(req, res) {
     }
 
     try {
-      await sendEmail({
-        resendApiKey,
-        mailFrom,
-        recipient,
-        payload,
+      await sendTransactionalEmail({
+        from: mailFrom,
+        to: recipient,
+        subject: payload.subject,
+        html: payload.html,
+        text: payload.text,
       })
 
       await updateLoanReminderStatus(supabase, loan.code, {

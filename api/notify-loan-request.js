@@ -1,4 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+import {
+  hasEmailProviderEnv,
+  sendTransactionalEmail,
+} from './_email.js'
 
 const jsonHeaders = {
   'Content-Type': 'application/json',
@@ -78,7 +82,6 @@ export default async function handler(req, res) {
 
   const supabaseUrl = process.env.SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const resendApiKey = process.env.RESEND_API_KEY
   const mailFrom = process.env.MAIL_FROM
   const fallbackEmail = process.env.NOTIFICATION_FALLBACK_EMAIL
 
@@ -149,7 +152,7 @@ export default async function handler(req, res) {
       ? contact.email
       : fallbackEmail
 
-  if (!recipient || !resendApiKey || !mailFrom) {
+  if (!recipient || !hasEmailProviderEnv()) {
     await updateNotificationStatus(supabase, requestCode, {
       request_notification_error:
         'Email skipped: missing recipient or email provider configuration.',
@@ -160,25 +163,19 @@ export default async function handler(req, res) {
     return
   }
 
-  const emailPayload = {
-    from: mailFrom,
-    to: [recipient],
-    subject: `Asset Loan Control ${request.code}`,
-    html: buildEmailHtml({ request }),
-    text: buildEmailText({ request }),
-  }
-
-  const emailResponse = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(emailPayload),
-  })
-
-  if (!emailResponse.ok) {
-    const errorText = await emailResponse.text()
+  try {
+    await sendTransactionalEmail({
+      from: mailFrom,
+      to: recipient,
+      subject: `Asset Loan Control ${request.code}`,
+      html: buildEmailHtml({ request }),
+      text: buildEmailText({ request }),
+    })
+  } catch (error) {
+    const errorText =
+      error instanceof Error
+        ? error.message
+        : 'Email provider rejected request'
 
     await updateNotificationStatus(supabase, requestCode, {
       request_notification_error: errorText.slice(0, 1000),
