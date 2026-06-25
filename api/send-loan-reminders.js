@@ -299,8 +299,9 @@ export default async function handler(req, res) {
       contact?.notification_enabled && contact.email
         ? contact.email
         : fallbackEmail
+    const primaryRecipient = recipient || auditBccEmail
 
-    if (!recipient) {
+    if (!primaryRecipient) {
       await updateLoanReminderStatus(supabase, loan.code, {
         loan_reminder_error: 'Reminder skipped: missing responsible email and fallback email.',
       })
@@ -335,7 +336,7 @@ export default async function handler(req, res) {
         code: loan.code,
         dryRun: true,
         kind: reminder.kind,
-        to: recipient,
+        to: primaryRecipient,
       })
       continue
     }
@@ -343,7 +344,7 @@ export default async function handler(req, res) {
     try {
       await sendTransactionalEmail({
         from: mailFrom,
-        to: recipient,
+        to: primaryRecipient,
         bcc: auditBccEmail,
         subject: payload.subject,
         html: payload.html,
@@ -360,7 +361,7 @@ export default async function handler(req, res) {
         code: loan.code,
         sent: true,
         kind: reminder.kind,
-        to: recipient,
+        to: primaryRecipient,
       })
     } catch (error) {
       const message =

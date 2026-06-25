@@ -154,8 +154,9 @@ export default async function handler(req, res) {
     contact?.notification_enabled && contact.email
       ? contact.email
       : fallbackEmail
+  const primaryRecipient = recipient || auditBccEmail
 
-  if (!recipient || !hasEmailProviderEnv()) {
+  if (!primaryRecipient || !hasEmailProviderEnv()) {
     await updateNotificationStatus(supabase, requestCode, {
       request_notification_error:
         'Email skipped: missing recipient or email provider configuration.',
@@ -169,7 +170,7 @@ export default async function handler(req, res) {
   try {
     await sendTransactionalEmail({
       from: mailFrom,
-      to: recipient,
+      to: primaryRecipient,
       bcc: auditBccEmail,
       subject: `Asset Loan Control ${request.code}`,
       html: buildEmailHtml({ request }),
@@ -196,5 +197,5 @@ export default async function handler(req, res) {
   })
 
   res.writeHead(200, jsonHeaders)
-  res.end(JSON.stringify({ sent: true, to: recipient }))
+  res.end(JSON.stringify({ sent: true, to: primaryRecipient }))
 }

@@ -30,11 +30,19 @@ export async function sendTransactionalEmail({
   html,
   text,
 }) {
+  const primaryRecipient = String(to ?? '').trim()
   const bccRecipients = Array.isArray(bcc)
     ? bcc.filter(Boolean)
     : bcc
       ? [bcc]
       : []
+  const uniqueBccRecipients = Array.from(
+    new Set(
+      bccRecipients
+        .map((email) => String(email).trim())
+        .filter((email) => email && email !== primaryRecipient),
+    ),
+  )
 
   if (process.env.BREVO_API_KEY) {
     const sender = parseMailFrom(from)
@@ -49,9 +57,9 @@ export async function sendTransactionalEmail({
         },
         body: JSON.stringify({
           sender,
-          to: [{ email: to }],
-          ...(bccRecipients.length > 0
-            ? { bcc: bccRecipients.map((email) => ({ email })) }
+          to: [{ email: primaryRecipient }],
+          ...(uniqueBccRecipients.length > 0
+            ? { bcc: uniqueBccRecipients.map((email) => ({ email })) }
             : {}),
           subject,
           htmlContent: html,
@@ -76,8 +84,10 @@ export async function sendTransactionalEmail({
       },
       body: JSON.stringify({
         from,
-        to: [to],
-        ...(bccRecipients.length > 0 ? { bcc: bccRecipients } : {}),
+        to: [primaryRecipient],
+        ...(uniqueBccRecipients.length > 0
+          ? { bcc: uniqueBccRecipients }
+          : {}),
         subject,
         html,
         text,
