@@ -84,6 +84,9 @@ export default async function handler(req, res) {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const mailFrom = process.env.MAIL_FROM
   const fallbackEmail = process.env.NOTIFICATION_FALLBACK_EMAIL
+  const auditBccEmail =
+    process.env.NOTIFICATION_AUDIT_BCC_EMAIL ??
+    'admin@assetloancontrol.com'
 
   if (!supabaseUrl || !serviceRoleKey) {
     res.writeHead(200, jsonHeaders)
@@ -167,6 +170,7 @@ export default async function handler(req, res) {
     await sendTransactionalEmail({
       from: mailFrom,
       to: recipient,
+      bcc: auditBccEmail,
       subject: `Asset Loan Control ${request.code}`,
       html: buildEmailHtml({ request }),
       text: buildEmailText({ request }),

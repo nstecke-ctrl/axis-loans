@@ -25,10 +25,17 @@ export function hasEmailProviderEnv() {
 export async function sendTransactionalEmail({
   from,
   to,
+  bcc,
   subject,
   html,
   text,
 }) {
+  const bccRecipients = Array.isArray(bcc)
+    ? bcc.filter(Boolean)
+    : bcc
+      ? [bcc]
+      : []
+
   if (process.env.BREVO_API_KEY) {
     const sender = parseMailFrom(from)
 
@@ -43,6 +50,9 @@ export async function sendTransactionalEmail({
         body: JSON.stringify({
           sender,
           to: [{ email: to }],
+          ...(bccRecipients.length > 0
+            ? { bcc: bccRecipients.map((email) => ({ email })) }
+            : {}),
           subject,
           htmlContent: html,
           textContent: text,
@@ -67,6 +77,7 @@ export async function sendTransactionalEmail({
       body: JSON.stringify({
         from,
         to: [to],
+        ...(bccRecipients.length > 0 ? { bcc: bccRecipients } : {}),
         subject,
         html,
         text,

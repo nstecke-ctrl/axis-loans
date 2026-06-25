@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { useAppRole } from '../../../components/auth/useAppRole'
+import { internalContacts } from '../../../lib/internalContacts'
 import type { EquipmentItem } from '../../inventory/data/equipment'
 import { fetchEquipmentItemsFromSupabase } from '../../inventory/data/equipmentSupabase'
 import type { LoanRequest } from '../../loan-requests/data/loanRequests'
@@ -15,6 +16,19 @@ type DashboardCard = {
   value: string
   to: string
   description: string
+}
+
+type NotificationFilter = 'All' | 'Pending' | 'Overdue' | 'Due Soon'
+
+type AppNotification = {
+  id: string
+  type: NotificationFilter
+  title: string
+  description: string
+  owner: string
+  tone: 'red' | 'amber' | 'neutral'
+  to: string
+  actionLabel: string
 }
 
 function formatCurrency(value: number) {
@@ -93,6 +107,11 @@ export function DashboardPage() {
     (request) => request.status === 'Pending',
   ).length
 
+  const [notificationFilter, setNotificationFilter] =
+    useState<NotificationFilter>('All')
+  const [notificationOwnerFilter, setNotificationOwnerFilter] =
+    useState('All')
+
   const availableEquipmentCount = equipmentItems.filter(
     (equipment) => equipment.status === 'Available',
   ).length
@@ -133,6 +152,61 @@ export function DashboardPage() {
       description: 'Review pending submissions',
     },
   ]
+
+  const notifications: AppNotification[] = [
+    ...loanRequests
+      .filter((request) => request.status === 'Pending')
+      .map((request) => ({
+        id: `request-${request.code}`,
+        type: 'Pending' as const,
+        title: `New request ${request.code}`,
+        description: `${request.requesterCompany} requested ${formatCurrency(
+          request.msrpTotalAmount,
+        )} in equipment.`,
+        owner: request.requestedHandler,
+        tone: 'neutral' as const,
+        to: `/loan-requests/${request.code}`,
+        actionLabel: 'Review',
+      })),
+    ...overdueLoans.map((loan) => ({
+      id: `overdue-${loan.code}`,
+      type: 'Overdue' as const,
+      title: `Overdue loan ${loan.code}`,
+      description: `${loan.company} is ${loan.overdueDelay?.toLowerCase()} with ${loan.responsible} as owner.`,
+      owner: loan.responsible,
+      tone: 'red' as const,
+      to: `/loans/${loan.code}`,
+      actionLabel: 'Open Loan',
+    })),
+    ...upcomingReturns.map((loan) => ({
+      id: `due-${loan.code}`,
+      type: 'Due Soon' as const,
+      title: `Loan due soon ${loan.code}`,
+      description: `${loan.company} is expected back on ${loan.expectedReturnDate}.`,
+      owner: loan.responsible,
+      tone: 'amber' as const,
+      to: `/loans/${loan.code}`,
+      actionLabel: 'Open Loan',
+    })),
+  ]
+
+  const notificationOwnerOptions = Array.from(
+    new Set([
+      ...internalContacts,
+      ...notifications.map((notification) => notification.owner),
+    ]),
+  ).sort((a, b) => a.localeCompare(b))
+
+  const filteredNotifications = notifications.filter((notification) => {
+    const matchesType =
+      notificationFilter === 'All' ||
+      notification.type === notificationFilter
+    const matchesOwner =
+      notificationOwnerFilter === 'All' ||
+      notification.owner === notificationOwnerFilter
+
+    return matchesType && matchesOwner
+  })
 
   return (
     <>
@@ -213,6 +287,162 @@ export function DashboardPage() {
             </Link>
           ))}
         </div>
+
+        <section className="mt-6 rounded-2xl border border-[#e5e5e2] bg-white p-6 shadow-sm">
+          <div className="mb-5 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
+            <div>
+              <p className="text-sm font-medium text-[#666666]">
+                Internal Notifications
+              </p>
+
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">
+                Operations Inbox
+              </h3>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#555555]">
+                Requests and loan follow-ups that need attention inside the
+                app, independent of email delivery.
+              </p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:min-w-[520px]">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-[#444444]">
+                  Notification Type
+                </span>
+                <select
+                  value={notificationFilter}
+                  onChange={(event) =>
+                    setNotificationFilter(
+                      event.target.value as NotificationFilter,
+                    )
+                  }
+                  className="w-full rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm text-[#171717] outline-none transition focus:border-[#ffda00]"
+                >
+                  <option value="All">All</option>
+                  <option value="Pending">Pending Requests</option>
+                  <option value="Overdue">Overdue Loans</option>
+                  <option value="Due Soon">Due Soon</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-[#444444]">
+                  Owner
+                </span>
+                <select
+                  value={notificationOwnerFilter}
+                  onChange={(event) =>
+                    setNotificationOwnerFilter(event.target.value)
+                  }
+                  className="w-full rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm text-[#171717] outline-none transition focus:border-[#ffda00]"
+                >
+                  <option value="All">All Owners</option>
+                  {notificationOwnerOptions.map((owner) => (
+                    <option key={owner} value={owner}>
+                      {owner}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <NotificationMetric
+              label="Pending Requests"
+              value={pendingRequestsCount}
+              active={notificationFilter === 'Pending'}
+              onClick={() => setNotificationFilter('Pending')}
+            />
+            <NotificationMetric
+              label="Overdue Loans"
+              value={overdueLoans.length}
+              active={notificationFilter === 'Overdue'}
+              onClick={() => setNotificationFilter('Overdue')}
+            />
+            <NotificationMetric
+              label="Due Soon"
+              value={upcomingReturns.length}
+              active={notificationFilter === 'Due Soon'}
+              onClick={() => setNotificationFilter('Due Soon')}
+            />
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {isLoading && (
+              <div className="rounded-2xl border border-[#e5e5e2] bg-[#fafaf8] p-5">
+                <p className="text-sm font-semibold text-[#171717]">
+                  Loading notifications...
+                </p>
+              </div>
+            )}
+
+            {!isLoading &&
+              filteredNotifications.slice(0, 8).map((notification) => (
+                <Link
+                  key={notification.id}
+                  to={notification.to}
+                  className={`block rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-sm ${
+                    notification.tone === 'red'
+                      ? 'border-red-100 bg-red-50/70'
+                      : notification.tone === 'amber'
+                        ? 'border-amber-100 bg-amber-50/70'
+                        : 'border-[#e5e5e2] bg-[#fafaf8]'
+                  }`}
+                >
+                  <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            notification.tone === 'red'
+                              ? 'bg-red-100 text-red-800'
+                              : notification.tone === 'amber'
+                                ? 'bg-amber-100 text-amber-900'
+                                : 'bg-[#ffda00]/25 text-[#171717]'
+                          }`}
+                        >
+                          {notification.type}
+                        </span>
+
+                        <p className="text-sm font-semibold text-[#171717]">
+                          {notification.title}
+                        </p>
+                      </div>
+
+                      <p className="mt-2 text-sm leading-6 text-[#555555]">
+                        {notification.description}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col items-start gap-2 lg:items-end">
+                      <p className="text-sm font-medium text-[#555555]">
+                        Owner: {notification.owner}
+                      </p>
+
+                      <span className="text-sm font-semibold text-[#171717] hover:underline">
+                        {notification.actionLabel}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+
+            {!isLoading && filteredNotifications.length === 0 && (
+              <div className="rounded-2xl border border-[#e5e5e2] bg-[#fafaf8] p-5">
+                <p className="text-sm font-semibold text-[#171717]">
+                  No notifications for this view.
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-[#555555]">
+                  Change the filters or wait for new requests and loan
+                  follow-ups.
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
 
         <div className="mt-6 grid gap-6 xl:grid-cols-2">
           <section className="rounded-2xl border border-[#e5e5e2] bg-white p-6 shadow-sm">
@@ -497,5 +727,34 @@ export function DashboardPage() {
         </section>
       </section>
     </>
+  )
+}
+
+function NotificationMetric({
+  label,
+  value,
+  active,
+  onClick,
+}: {
+  label: string
+  value: number
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${
+        active
+          ? 'border-[#ffda00] bg-[#ffda00]/20'
+          : 'border-[#e5e5e2] bg-[#fafaf8] hover:border-[#d4d4cf]'
+      }`}
+    >
+      <p className="text-sm font-medium text-[#666666]">{label}</p>
+      <p className="mt-3 text-3xl font-semibold tracking-tight text-[#171717]">
+        {value}
+      </p>
+    </button>
   )
 }
