@@ -7,10 +7,12 @@ import {
 } from 'react'
 import type { AppRole } from '../../../components/auth/appRoleCore'
 import {
+  bulkCreateAdminUsers,
   createAdminUser,
   fetchAdminUsers,
   resetAdminUserPassword,
   updateAdminUser,
+  type BulkAdminUserInput,
   type AdminUserRecord,
 } from '../data/adminUsers'
 
@@ -36,6 +38,18 @@ const roleOptions: Array<{
   },
 ]
 
+const internalUsersTemplate = [
+  'Nicolás Steck,nicolas.steck@axis.com,admin',
+  'Tamara Castro,tamara.castro@axis.com,operator',
+  'Estivalía Sanchez,estivalia.sanchez@axis.com,operator',
+  'Mariano Vega,mariano.vega@axis.com,viewer',
+  'Israel Soto,israel.soto@axis.com,viewer',
+  'Oswaldo Suescún,oswaldo.suescun@axis.com,viewer',
+  'Daniel Fuente,daniel.fuente@axis.com,viewer',
+  'Cristian Aguilera,cristian.aguilera@axis.com,viewer',
+  'Jimena Ginetti,jimena.ginetti@axis.com,viewer',
+].join('\n')
+
 function formatDate(value: string | null) {
   if (!value) {
     return 'Never'
@@ -50,6 +64,40 @@ function formatDate(value: string | null) {
 
 function isEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
+function parseBulkUsers(value: string): BulkAdminUserInput[] {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => {
+      const [displayName, email, role] = line
+        .split(',')
+        .map((item) => item.trim())
+
+      if (!displayName || !email || !role) {
+        throw new Error(
+          `Line ${index + 1} must use: Display Name, email, role.`,
+        )
+      }
+
+      if (!isEmail(email)) {
+        throw new Error(`Line ${index + 1} has an invalid email.`)
+      }
+
+      if (role !== 'admin' && role !== 'operator' && role !== 'viewer') {
+        throw new Error(
+          `Line ${index + 1} role must be admin, operator or viewer.`,
+        )
+      }
+
+      return {
+        displayName,
+        email,
+        role,
+      }
+    })
 }
 
 export function UserManagementPage() {
@@ -70,6 +118,12 @@ export function UserManagementPage() {
   const [newDisplayName, setNewDisplayName] = useState('')
   const [newRole, setNewRole] = useState<AppRole>('viewer')
   const [isCreating, setIsCreating] = useState(false)
+  const [bulkUsersText, setBulkUsersText] = useState(internalUsersTemplate)
+  const [bulkTemporaryPassword, setBulkTemporaryPassword] =
+    useState('axis2827')
+  const [resetExistingPasswords, setResetExistingPasswords] =
+    useState(false)
+  const [isBulkCreating, setIsBulkCreating] = useState(false)
 
   const roleCounts = useMemo(
     () => ({
@@ -169,6 +223,71 @@ export function UserManagementPage() {
       )
     } finally {
       setIsCreating(false)
+    }
+  }
+
+  async function handleBulkCreateUsers(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setActionError(null)
+    setSuccessMessage(null)
+    setTemporaryPassword(null)
+
+    if (bulkTemporaryPassword.trim().length < 8) {
+      setActionError('Temporary password must have at least 8 characters.')
+      return
+    }
+
+    let parsedUsers: BulkAdminUserInput[]
+
+    try {
+      parsedUsers = parseBulkUsers(bulkUsersText)
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : 'Bulk users could not be parsed.',
+      )
+      return
+    }
+
+    setIsBulkCreating(true)
+
+    try {
+      const result = await bulkCreateAdminUsers({
+        users: parsedUsers,
+        temporaryPassword: bulkTemporaryPassword.trim(),
+        resetExistingPasswords,
+      })
+
+      setUsers((currentUsers) => {
+        const newUsersById = new Map(
+          result.users.map((user) => [user.id, user]),
+        )
+        const mergedUsers = currentUsers.map((user) =>
+          newUsersById.get(user.id) ?? user,
+        )
+        const existingIds = new Set(currentUsers.map((user) => user.id))
+        const addedUsers = result.users.filter(
+          (user) => !existingIds.has(user.id),
+        )
+
+        return [...mergedUsers, ...addedUsers].sort((a, b) =>
+          a.email.localeCompare(b.email),
+        )
+      })
+
+      setTemporaryPassword(result.temporaryPassword)
+      setSuccessMessage(
+        `${result.createdCount} users created, ${result.updatedCount} users updated. ${result.passwordResetCount} users must change the temporary password on sign-in.`,
+      )
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : 'Bulk users could not be created.',
+      )
+    } finally {
+      setIsBulkCreating(false)
     }
   }
 
@@ -374,6 +493,97 @@ export function UserManagementPage() {
             )}
           </div>
         </div>
+
+        <form
+          onSubmit={handleBulkCreateUsers}
+          className="mt-6 rounded-2xl border border-[#e5e5e2] bg-white p-5 shadow-sm"
+        >
+          <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
+            <div>
+              <h3 className="text-lg font-semibold text-[#171717]">
+                Bulk Create Users
+              </h3>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#555555]">
+                One user per line using display name, email and role. Roles
+                must be admin, operator or viewer.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setBulkUsersText(internalUsersTemplate)}
+              className="inline-flex items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+            >
+              Load Internal Template
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-[#444444]">
+                Users
+              </span>
+              <textarea
+                value={bulkUsersText}
+                onChange={(event) => setBulkUsersText(event.target.value)}
+                rows={10}
+                spellCheck={false}
+                className="min-h-[260px] w-full rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 font-mono text-sm text-[#171717] outline-none transition placeholder:text-[#999999] focus:border-[#ffda00]"
+              />
+            </label>
+
+            <div className="space-y-4">
+              <Field label="Temporary Password">
+                <input
+                  type="text"
+                  value={bulkTemporaryPassword}
+                  onChange={(event) =>
+                    setBulkTemporaryPassword(event.target.value)
+                  }
+                  className="w-full rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 font-mono text-sm text-[#171717] outline-none transition focus:border-[#ffda00]"
+                />
+              </Field>
+
+              <label className="flex items-start gap-3 rounded-2xl border border-[#e5e5e2] bg-[#fafaf8] p-4">
+                <input
+                  type="checkbox"
+                  checked={resetExistingPasswords}
+                  onChange={(event) =>
+                    setResetExistingPasswords(event.target.checked)
+                  }
+                  className="mt-1 h-4 w-4 rounded border-[#d8d8d4]"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-[#171717]">
+                    Reset existing passwords
+                  </span>
+                  <span className="mt-1 block text-sm leading-6 text-[#555555]">
+                    Existing users will also receive this temporary password
+                    and must change it on sign-in.
+                  </span>
+                </span>
+              </label>
+
+              <button
+                type="submit"
+                disabled={isBulkCreating}
+                className={`inline-flex w-full items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition ${
+                  isBulkCreating
+                    ? 'cursor-not-allowed bg-[#ecece8] text-[#888888]'
+                    : 'bg-[#181818] text-white hover:bg-black'
+                }`}
+              >
+                {isBulkCreating ? 'Creating Users...' : 'Create Bulk Users'}
+              </button>
+
+              <p className="text-sm leading-6 text-[#666666]">
+                Each created or reset user is forced to create a new password
+                before entering the app.
+              </p>
+            </div>
+          </div>
+        </form>
 
         <div className="mt-6 rounded-2xl border border-[#e5e5e2] bg-white shadow-sm">
           <div className="border-b border-[#e5e5e2] p-5">
