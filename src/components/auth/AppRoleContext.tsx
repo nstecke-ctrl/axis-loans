@@ -13,6 +13,37 @@ import {
   type AppRoleContextValue,
 } from './appRoleCore'
 
+async function getCurrentUserStatus() {
+  const { data } = await supabase.auth.getSession()
+  const accessToken = data.session?.access_token
+
+  if (!accessToken) {
+    throw new Error('Missing session token.')
+  }
+
+  const response = await fetch('/api/current-user-status', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    cache: 'no-store',
+  })
+
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(
+      typeof payload.error === 'string'
+        ? payload.error
+        : 'Account status could not be loaded.',
+    )
+  }
+
+  return payload as {
+    role?: unknown
+    passwordResetRequired?: unknown
+  }
+}
+
 export function AppRoleProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole>('viewer')
   const [isLoadingRole, setIsLoadingRole] = useState(true)
@@ -25,37 +56,48 @@ export function AppRoleProvider({ children }: { children: ReactNode }) {
     async function loadRole() {
       setIsLoadingRole(true)
 
-      const [
-        { data: roleData, error: roleError },
-        { data: passwordResetData, error: passwordResetError },
-        { data: userData },
-      ] = await Promise.all([
-        supabase.rpc('current_app_role'),
-        supabase.rpc('current_password_reset_required'),
-        supabase.auth.getUser(),
-      ])
+      try {
+        const userStatus = await getCurrentUserStatus()
 
-      let passwordResetRequired = Boolean(passwordResetData)
+        if (!isMounted) {
+          return
+        }
 
-      if (passwordResetError && userData.user) {
-        const { data: roleRecord } = await supabase
-          .from('app_user_roles')
-          .select('password_reset_required')
-          .eq('user_id', userData.user.id)
-          .maybeSingle()
-
-        passwordResetRequired = Boolean(
-          roleRecord?.password_reset_required,
+        setRole(normalizeRole(userStatus.role))
+        setIsPasswordResetRequired(
+          Boolean(userStatus.passwordResetRequired),
         )
-      }
-
-      if (!isMounted) {
+        setIsLoadingRole(false)
         return
-      }
+      } catch {
+        const [{ data: roleData, error: roleError }, { data: userData }] =
+          await Promise.all([
+            supabase.rpc('current_app_role'),
+            supabase.auth.getUser(),
+          ])
 
-      setRole(roleError ? 'viewer' : normalizeRole(roleData))
-      setIsPasswordResetRequired(passwordResetRequired)
-      setIsLoadingRole(false)
+        let passwordResetRequired = false
+
+        if (userData.user) {
+          const { data: roleRecord } = await supabase
+            .from('app_user_roles')
+            .select('password_reset_required')
+            .eq('user_id', userData.user.id)
+            .maybeSingle()
+
+          passwordResetRequired = Boolean(
+            roleRecord?.password_reset_required,
+          )
+        }
+
+        if (!isMounted) {
+          return
+        }
+
+        setRole(roleError ? 'viewer' : normalizeRole(roleData))
+        setIsPasswordResetRequired(passwordResetRequired)
+        setIsLoadingRole(false)
+      }
     }
 
     void loadRole()
