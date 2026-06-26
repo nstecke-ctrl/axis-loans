@@ -25,14 +25,19 @@ export function AppRoleProvider({ children }: { children: ReactNode }) {
     async function loadRole() {
       setIsLoadingRole(true)
 
-      const [{ data, error }, { data: userData }] = await Promise.all([
+      const [
+        { data: roleData, error: roleError },
+        { data: passwordResetData, error: passwordResetError },
+        { data: userData },
+      ] = await Promise.all([
         supabase.rpc('current_app_role'),
+        supabase.rpc('current_password_reset_required'),
         supabase.auth.getUser(),
       ])
 
-      let passwordResetRequired = false
+      let passwordResetRequired = Boolean(passwordResetData)
 
-      if (userData.user) {
+      if (passwordResetError && userData.user) {
         const { data: roleRecord } = await supabase
           .from('app_user_roles')
           .select('password_reset_required')
@@ -48,7 +53,7 @@ export function AppRoleProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      setRole(error ? 'viewer' : normalizeRole(data))
+      setRole(roleError ? 'viewer' : normalizeRole(roleData))
       setIsPasswordResetRequired(passwordResetRequired)
       setIsLoadingRole(false)
     }
