@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAppRole } from '../../../components/auth/useAppRole'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import { internalContactOptions } from '../../../lib/internalContacts'
+import {
+  getEquipmentStatusTone,
+  type EquipmentItem,
+} from '../../inventory/data/equipment'
+import { fetchEquipmentItemsFromSupabase } from '../../inventory/data/equipmentSupabase'
 import { generateLoanDocumentPdf } from '../utils/generateLoanDocumentPdf'
 import {
   getLoanEquipmentStatusTone,
@@ -41,6 +46,14 @@ function dateForInput(value: string) {
   return `${year}-${month}-${day}`
 }
 
+function normalizeSearchText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
 function buildInitialEditForm(loan: LoanItem): LoanEditForm {
   return {
     recipientType: loan.recipientType,
@@ -71,6 +84,13 @@ export function LoanDetailPage() {
 
   const [showEditForm, setShowEditForm] = useState(false)
   const [editForm, setEditForm] = useState<LoanEditForm | null>(null)
+  const [availableEquipment, setAvailableEquipment] = useState<
+    EquipmentItem[]
+  >([])
+  const [equipmentSearch, setEquipmentSearch] = useState('')
+  const [selectedEquipmentCodes, setSelectedEquipmentCodes] = useState<
+    string[]
+  >([])
   const [isSavingLoan, setIsSavingLoan] = useState(false)
   const [editActionMessage, setEditActionMessage] = useState<string | null>(
     null,
@@ -101,6 +121,11 @@ export function LoanDetailPage() {
 
         if (loanDetail) {
           setEditForm(buildInitialEditForm(loanDetail))
+          setSelectedEquipmentCodes(
+            loanDetail.equipment
+              .filter((equipment) => equipment.itemStatus === 'On Loan')
+              .map((equipment) => equipment.equipmentCode),
+          )
         }
       } catch (error) {
         if (!isMounted) {
@@ -126,15 +151,40 @@ export function LoanDetailPage() {
     }
   }, [loanCode])
 
+  async function loadAvailableEquipment() {
+    try {
+      const equipmentItems = await fetchEquipmentItemsFromSupabase()
+
+      setAvailableEquipment(
+        equipmentItems.filter(
+          (equipment) => equipment.status === 'Available',
+        ),
+      )
+    } catch (error) {
+      setEditActionError(
+        error instanceof Error
+          ? error.message
+          : 'Available equipment could not be loaded.',
+      )
+    }
+  }
+
   function openEditForm() {
     if (!loan) {
       return
     }
 
+    setSelectedEquipmentCodes(
+      loan.equipment
+        .filter((equipment) => equipment.itemStatus === 'On Loan')
+        .map((equipment) => equipment.equipmentCode),
+    )
+    setEquipmentSearch('')
     setEditForm(buildInitialEditForm(loan))
     setEditActionMessage(null)
     setEditActionError(null)
     setShowEditForm(true)
+    void loadAvailableEquipment()
   }
 
   function closeEditForm() {
@@ -152,6 +202,70 @@ export function LoanDetailPage() {
         : currentForm,
     )
   }
+
+  function addEquipmentToEdit(equipmentCode: string) {
+    setSelectedEquipmentCodes((currentCodes) =>
+      currentCodes.includes(equipmentCode)
+        ? currentCodes
+        : [...currentCodes, equipmentCode],
+    )
+  }
+
+  function removeEquipmentFromEdit(equipmentCode: string) {
+    setSelectedEquipmentCodes((currentCodes) =>
+      currentCodes.filter((code) => code !== equipmentCode),
+    )
+  }
+
+  const activeLoanEquipment = useMemo(
+    () =>
+      loan?.equipment.filter(
+        (equipment) => equipment.itemStatus === 'On Loan',
+      ) ?? [],
+    [loan],
+  )
+
+  const selectedCurrentEquipment = activeLoanEquipment.filter((equipment) =>
+    selectedEquipmentCodes.includes(equipment.equipmentCode),
+  )
+
+  const selectedNewEquipment = availableEquipment.filter((equipment) =>
+    selectedEquipmentCodes.includes(equipment.code),
+  )
+
+  const filteredAvailableEquipment = useMemo(() => {
+    const normalizedSearch = normalizeSearchText(equipmentSearch)
+    const selectedCodes = new Set(selectedEquipmentCodes)
+
+    const unselectedEquipment = availableEquipment.filter(
+      (equipment) => !selectedCodes.has(equipment.code),
+    )
+
+    if (!normalizedSearch) {
+      return unselectedEquipment
+    }
+
+    return unselectedEquipment.filter((equipment) => {
+      const searchableText = normalizeSearchText(
+        [
+          equipment.code,
+          equipment.category,
+          equipment.brand,
+          equipment.model,
+          equipment.partNumber,
+          equipment.serialNumber,
+          equipment.location,
+          equipment.lastLocation,
+        ].join(' '),
+      )
+
+      return searchableText.includes(normalizedSearch)
+    })
+  }, [availableEquipment, equipmentSearch, selectedEquipmentCodes])
+
+  const canEditAssignedEquipment = Boolean(
+    loan && loan.status !== 'Returned' && loan.status !== 'Cancelled',
+  )
 
   const hasInvalidDateRange = Boolean(
     editForm &&
@@ -171,8 +285,19 @@ export function LoanDetailPage() {
       editForm.city.trim() &&
       editForm.checkoutDate &&
       editForm.expectedReturnDate &&
+      (!canEditAssignedEquipment || selectedEquipmentCodes.length > 0) &&
       !hasInvalidDateRange &&
       !isSavingLoan,
+  )
+
+  const equipmentHasMeaningfulChange = Boolean(
+    canEditAssignedEquipment &&
+      loan &&
+      (activeLoanEquipment.length !== selectedEquipmentCodes.length ||
+        activeLoanEquipment.some(
+          (equipment) =>
+            !selectedEquipmentCodes.includes(equipment.equipmentCode),
+        )),
   )
 
   const profileHasMeaningfulChange = Boolean(
@@ -193,7 +318,8 @@ export function LoanDetailPage() {
         editForm.checkoutDate !== dateForInput(loan.checkoutDate) ||
         editForm.expectedReturnDate !==
           dateForInput(loan.expectedReturnDate) ||
-        editForm.notes.trim() !== (loan.notes ?? '')),
+        editForm.notes.trim() !== (loan.notes ?? '') ||
+        equipmentHasMeaningfulChange),
   )
 
   async function handleSaveLoanEdit() {
@@ -228,10 +354,20 @@ export function LoanDetailPage() {
         checkoutDate: editForm.checkoutDate,
         expectedReturnDate: editForm.expectedReturnDate,
         notes: editForm.notes.trim() || undefined,
+        equipmentCodes: canEditAssignedEquipment
+          ? selectedEquipmentCodes
+          : activeLoanEquipment.map(
+              (equipment) => equipment.equipmentCode,
+            ),
       })
 
       setLoan(updatedLoan)
       setEditForm(buildInitialEditForm(updatedLoan))
+      setSelectedEquipmentCodes(
+        updatedLoan.equipment
+          .filter((equipment) => equipment.itemStatus === 'On Loan')
+          .map((equipment) => equipment.equipmentCode),
+      )
       setShowEditForm(false)
       setEditActionMessage('Loan information updated successfully.')
     } catch (error) {
@@ -413,9 +549,9 @@ export function LoanDetailPage() {
                 </h3>
 
                 <p className="mt-2 max-w-3xl text-sm leading-7 text-[#5d4a00]">
-                  This form updates administrative loan information. Assigned
-                  equipment and return processing remain controlled through
-                  their dedicated workflows.
+                  This form updates administrative loan information and the
+                  equipment assigned to active loans. Return processing remains
+                  controlled through its dedicated workflow.
                 </p>
               </div>
 
@@ -577,6 +713,131 @@ export function LoanDetailPage() {
                 placeholder="Optional loan notes."
                 onChange={(value) => updateEditForm('notes', value)}
               />
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-[#e5e5e2] bg-white p-5">
+              <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+                <div>
+                  <p className="text-sm font-medium text-[#666666]">
+                    Assigned Equipment
+                  </p>
+
+                  <h4 className="mt-1 text-lg font-semibold text-[#171717]">
+                    {selectedEquipmentCodes.length} assets selected
+                  </h4>
+                </div>
+
+                <span className="w-fit rounded-full bg-[#f3f3f0] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#555555]">
+                  Active loan only
+                </span>
+              </div>
+
+              {!canEditAssignedEquipment && (
+                <div className="mt-4 rounded-2xl border border-[#e5e5e2] bg-[#fafaf8] p-4">
+                  <p className="text-sm leading-6 text-[#555555]">
+                    Closed or cancelled loans keep their assigned equipment
+                    history locked.
+                  </p>
+                </div>
+              )}
+
+              {canEditAssignedEquipment && (
+                <>
+                  <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                    {selectedCurrentEquipment.map((equipment) => (
+                      <SelectedLoanEquipmentCard
+                        key={equipment.equipmentCode}
+                        code={equipment.equipmentCode}
+                        model={equipment.model}
+                        serialNumber={equipment.serialNumber}
+                        helperText="Current loan item"
+                        onRemove={removeEquipmentFromEdit}
+                      />
+                    ))}
+
+                    {selectedNewEquipment.map((equipment) => (
+                      <SelectedLoanEquipmentCard
+                        key={equipment.code}
+                        code={equipment.code}
+                        model={equipment.model}
+                        serialNumber={equipment.serialNumber}
+                        helperText={`New assignment · ${equipment.location}`}
+                        onRemove={removeEquipmentFromEdit}
+                      />
+                    ))}
+                  </div>
+
+                  {selectedEquipmentCodes.length === 0 && (
+                    <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+                      <p className="text-sm font-semibold text-red-800">
+                        At least one active equipment item must remain assigned.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="mt-5">
+                    <TextField
+                      label="Find available equipment"
+                      value={equipmentSearch}
+                      placeholder="Search by code, model, serial, site..."
+                      onChange={setEquipmentSearch}
+                    />
+                  </div>
+
+                  <div className="mt-4 max-h-80 space-y-3 overflow-y-auto rounded-2xl border border-[#e5e5e2] bg-[#fafaf8] p-3">
+                    {filteredAvailableEquipment
+                      .slice(0, 30)
+                      .map((equipment) => (
+                        <div
+                          key={equipment.code}
+                          className="flex flex-col gap-3 rounded-xl border border-[#e5e5e2] bg-white p-4 md:flex-row md:items-center md:justify-between"
+                        >
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-[#171717]">
+                                {equipment.code}
+                              </p>
+
+                              <StatusBadge
+                                label={equipment.status}
+                                tone={getEquipmentStatusTone(
+                                  equipment.status,
+                                )}
+                              />
+                            </div>
+
+                            <p className="mt-1 text-sm font-medium text-[#171717]">
+                              {equipment.model}
+                            </p>
+
+                            <p className="mt-1 text-xs text-[#666666]">
+                              Serial {equipment.serialNumber} · Site{' '}
+                              {equipment.location}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addEquipmentToEdit(equipment.code)
+                            }
+                            className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl bg-[#181818] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      ))}
+
+                    {filteredAvailableEquipment.length === 0 && (
+                      <div className="rounded-xl bg-white p-4">
+                        <p className="text-sm leading-6 text-[#555555]">
+                          No available equipment matches this search.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mt-6 flex flex-col gap-3 md:flex-row md:justify-end">
@@ -912,6 +1173,44 @@ function DetailBlock({
     <div className="rounded-2xl border border-[#e5e5e2] bg-[#fafaf8] p-4">
       <p className="text-sm font-medium text-[#666666]">{label}</p>
       <p className="mt-2 text-sm leading-7 text-[#555555]">{value}</p>
+    </div>
+  )
+}
+
+function SelectedLoanEquipmentCard({
+  code,
+  model,
+  serialNumber,
+  helperText,
+  onRemove,
+}: {
+  code: string
+  model: string
+  serialNumber: string
+  helperText: string
+  onRemove: (code: string) => void
+}) {
+  return (
+    <div className="rounded-2xl border border-[#e5e5e2] bg-[#fafaf8] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[#171717]">{code}</p>
+
+          <p className="mt-1 text-sm text-[#555555]">{model}</p>
+
+          <p className="mt-1 text-xs text-[#777777]">
+            {serialNumber} · {helperText}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onRemove(code)}
+          className="text-sm font-semibold text-red-700 transition hover:text-red-900 hover:underline"
+        >
+          Remove
+        </button>
+      </div>
     </div>
   )
 }

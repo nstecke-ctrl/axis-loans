@@ -325,6 +325,7 @@ export type UpdateLoanProfileInput = {
   expectedReturnDate: string
   notes?: string
   checkoutHandler: string
+  equipmentCodes: string[]
 }
 
 type UpdateLoanProfileRpcResponse = {
@@ -358,6 +359,7 @@ export async function updateLoanProfileInSupabase(
       input.expectedReturnDate,
     ),
     p_notes: input.notes ?? '',
+    p_equipment_codes: input.equipmentCodes,
     p_performed_by: performedBy,
   })
 
