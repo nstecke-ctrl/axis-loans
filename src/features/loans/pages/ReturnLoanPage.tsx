@@ -487,6 +487,10 @@ export function ReturnLoanPage() {
                         <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
                           Notes
                         </th>
+
+                        <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
+                          Return Site
+                        </th>
                       </tr>
                     </thead>
 
@@ -510,6 +514,15 @@ export function ReturnLoanPage() {
 
                           <td className="min-w-72 px-5 py-4 text-sm text-[#555555]">
                             {item.notes || 'No notes'}
+                          </td>
+
+                          <td className="min-w-48 px-5 py-4 text-sm text-[#555555]">
+                            {item.condition === 'Available'
+                              ? item.equipment.lastLocation ??
+                                'Previous site'
+                              : item.condition === 'Under Review'
+                                ? 'Technical Review'
+                                : 'Pending Assessment'}
                           </td>
                         </tr>
                       ))}
@@ -757,6 +770,13 @@ export function ReturnLoanPage() {
 
                             <p className="mt-2 text-lg font-semibold text-[#171717]">
                               {equipment.model}
+                            </p>
+
+                            <p className="mt-1 text-sm text-[#555555]">
+                              Previous site:{' '}
+                              <span className="font-medium text-[#171717]">
+                                {equipment.lastLocation ?? 'Not registered'}
+                              </span>
                             </p>
 
                             <p className="mt-1 text-sm text-[#555555]">

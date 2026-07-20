@@ -10,6 +10,9 @@ import {
 import { fetchEquipmentItemsFromSupabase } from '../data/equipmentSupabase'
 
 type QuickFilter = 'All' | 'Available' | 'On Loan' | 'Requires Attention'
+type InventoryStatusFilter = 'All' | EquipmentStatus
+
+const inventoryFilterStorageKey = 'dac-inventory-filters'
 
 function normalizeSearchText(value: string) {
   return value
@@ -27,23 +30,65 @@ function getInitialQuickFilter(value: string | null): QuickFilter {
     : 'All'
 }
 
+function getInitialStatusFilter(value: string | null): InventoryStatusFilter {
+  return value === 'Available' ||
+    value === 'On Loan' ||
+    value === 'Reserved' ||
+    value === 'Under Review' ||
+    value === 'Damaged'
+    ? value
+    : 'All'
+}
+
+function getStoredInventoryFilters() {
+  try {
+    const rawValue = window.sessionStorage.getItem(inventoryFilterStorageKey)
+
+    if (!rawValue) {
+      return {}
+    }
+
+    return JSON.parse(rawValue) as Partial<{
+      searchTerm: string
+      statusFilter: InventoryStatusFilter
+      categoryFilter: string
+      locationFilter: string
+      quickFilter: QuickFilter
+    }>
+  } catch {
+    return {}
+  }
+}
+
 export function InventoryPage() {
   const { permissions } = useAppRole()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const requestedQuickFilter = searchParams.get('quick')
+  const storedFilters = useMemo(getStoredInventoryFilters, [])
 
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'All' | EquipmentStatus>(
-    'All',
+  const [searchTerm, setSearchTerm] = useState(
+    () => searchParams.get('q') ?? storedFilters.searchTerm ?? '',
   )
-  const [categoryFilter, setCategoryFilter] = useState('All')
-  const [locationFilter, setLocationFilter] = useState('All')
+  const [statusFilter, setStatusFilter] = useState<InventoryStatusFilter>(
+    () =>
+      getInitialStatusFilter(
+        searchParams.get('status') ?? storedFilters.statusFilter ?? null,
+      ),
+  )
+  const [categoryFilter, setCategoryFilter] = useState(
+    () => searchParams.get('category') ?? storedFilters.categoryFilter ?? 'All',
+  )
+  const [locationFilter, setLocationFilter] = useState(
+    () => searchParams.get('location') ?? storedFilters.locationFilter ?? 'All',
+  )
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(() =>
-    getInitialQuickFilter(requestedQuickFilter),
+    getInitialQuickFilter(
+      requestedQuickFilter ?? storedFilters.quickFilter ?? null,
+    ),
   )
 
   useEffect(() => {
@@ -85,6 +130,49 @@ export function InventoryPage() {
     }
   }, [])
 
+  useEffect(() => {
+    const nextParams = new URLSearchParams()
+
+    if (searchTerm.trim()) {
+      nextParams.set('q', searchTerm.trim())
+    }
+
+    if (statusFilter !== 'All') {
+      nextParams.set('status', statusFilter)
+    }
+
+    if (categoryFilter !== 'All') {
+      nextParams.set('category', categoryFilter)
+    }
+
+    if (locationFilter !== 'All') {
+      nextParams.set('location', locationFilter)
+    }
+
+    if (quickFilter !== 'All') {
+      nextParams.set('quick', quickFilter)
+    }
+
+    setSearchParams(nextParams, { replace: true })
+    window.sessionStorage.setItem(
+      inventoryFilterStorageKey,
+      JSON.stringify({
+        searchTerm,
+        statusFilter,
+        categoryFilter,
+        locationFilter,
+        quickFilter,
+      }),
+    )
+  }, [
+    categoryFilter,
+    locationFilter,
+    quickFilter,
+    searchTerm,
+    setSearchParams,
+    statusFilter,
+  ])
+
   const availableLocations = useMemo(() => {
     return Array.from(
       new Set(equipmentItems.map((equipment) => equipment.location)),
@@ -110,6 +198,7 @@ export function InventoryPage() {
           equipment.partNumber,
           equipment.serialNumber,
           equipment.location,
+          equipment.lastLocation ?? '',
           equipment.legacyCode ?? '',
         ].join(' '),
       )
@@ -174,6 +263,14 @@ export function InventoryPage() {
 
   function clearQuickFilter() {
     setQuickFilter('All')
+  }
+
+  function clearAllFilters() {
+    setQuickFilter('All')
+    setStatusFilter('All')
+    setCategoryFilter('All')
+    setLocationFilter('All')
+    setSearchTerm('')
   }
 
   return (
@@ -315,7 +412,7 @@ export function InventoryPage() {
               <select
                 value={statusFilter}
                 onChange={(event) =>
-                  setStatusFilter(event.target.value as 'All' | EquipmentStatus)
+                  setStatusFilter(event.target.value as InventoryStatusFilter)
                 }
                 className="w-full rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm text-[#171717] outline-none transition focus:border-[#ffda00]"
               >
@@ -387,6 +484,22 @@ export function InventoryPage() {
               </button>
             </div>
           )}
+
+          {(searchTerm ||
+            statusFilter !== 'All' ||
+            categoryFilter !== 'All' ||
+            locationFilter !== 'All' ||
+            quickFilter !== 'All') && (
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="text-sm font-semibold text-[#171717] transition hover:text-black hover:underline"
+              >
+                Clear all filters
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 overflow-hidden rounded-2xl border border-[#e5e5e2] bg-white shadow-sm">
@@ -450,6 +563,10 @@ export function InventoryPage() {
                         Location
                       </th>
 
+                      <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
+                        Last Site
+                      </th>
+
                       <th className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wide text-[#777777]">
                         Action
                       </th>
@@ -497,6 +614,10 @@ export function InventoryPage() {
 
                         <td className="min-w-48 px-5 py-4 text-sm text-[#555555]">
                           {equipment.location}
+                        </td>
+
+                        <td className="min-w-48 px-5 py-4 text-sm text-[#555555]">
+                          {equipment.lastLocation ?? equipment.location}
                         </td>
 
                         <td className="whitespace-nowrap px-5 py-4 text-right">

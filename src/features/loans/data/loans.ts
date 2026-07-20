@@ -12,6 +12,8 @@ export type LoanEquipmentItem = {
   category: string
   model: string
   serialNumber: string
+  currentLocation?: string
+  lastLocation?: string
   itemStatus: LoanItemStatus
   returnedAt?: string
   returnCondition?: 'Available' | 'Under Review' | 'Damaged'

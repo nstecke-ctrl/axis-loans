@@ -29,6 +29,7 @@ export type EquipmentItem = {
   serialNumber: string
   status: EquipmentStatus
   location: string
+  lastLocation?: string
   acquiredAt: string
   legacyCode?: string
   accessories?: string

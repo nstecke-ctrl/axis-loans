@@ -837,6 +837,10 @@ export function EquipmentDetailPage() {
                   value={equipment.location}
                 />
                 <DetailField
+                  label="Last Site"
+                  value={equipment.lastLocation ?? equipment.location}
+                />
+                <DetailField
                   label="Acquisition Date"
                   value={equipment.acquiredAt}
                 />
@@ -943,6 +947,16 @@ export function EquipmentDetailPage() {
 
                   <p className="mt-2 font-semibold text-[#171717]">
                     {equipment.location}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-[#fafaf8] p-4">
+                  <p className="text-sm font-medium text-[#666666]">
+                    Last Site
+                  </p>
+
+                  <p className="mt-2 font-semibold text-[#171717]">
+                    {equipment.lastLocation ?? equipment.location}
                   </p>
                 </div>
               </div>
