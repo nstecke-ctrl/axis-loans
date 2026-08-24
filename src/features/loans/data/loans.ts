@@ -372,6 +372,7 @@ export function createLoan(input: CreateLoanInput): LoanItem {
     model: item.model,
     serialNumber: item.serialNumber,
     itemStatus: 'On Loan',
+    location: 'Warehouse',
   }))
 
   const newLoan: LoanItem = {
