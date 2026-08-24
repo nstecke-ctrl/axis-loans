@@ -13,6 +13,7 @@ export type LoanEquipmentItem = {
   model: string
   serialNumber: string
   itemStatus: LoanItemStatus
+  location: string
   returnedAt?: string
   returnCondition?: 'Available' | 'Under Review' | 'Damaged'
   returnNotes?: string
@@ -100,6 +101,7 @@ const seedLoanItems: LoanItem[] = [
         model: 'AXIS I8116-E',
         serialNumber: 'ACCC8E8D1042',
         itemStatus: 'On Loan',
+        location: 'Storage Room A',
       },
     ],
   },
@@ -127,6 +129,7 @@ const seedLoanItems: LoanItem[] = [
         model: 'AXIS C1310-E',
         serialNumber: 'B894D3A12109',
         itemStatus: 'On Loan',
+        location: 'Warehouse B',
       },
     ],
   },
@@ -154,6 +157,7 @@ const seedLoanItems: LoanItem[] = [
         model: 'AXIS Q1809-LE',
         serialNumber: 'SIMULATED-008',
         itemStatus: 'On Loan',
+        location: 'Office Floor 3',
       },
       {
         equipmentCode: 'EQ-000009',
@@ -161,6 +165,7 @@ const seedLoanItems: LoanItem[] = [
         model: 'AXIS T91L61 Wall-and-Pole Mount',
         serialNumber: 'No Serial',
         itemStatus: 'On Loan',
+        location: 'Office Floor 3',
       },
     ],
   },
@@ -189,6 +194,7 @@ const seedLoanItems: LoanItem[] = [
         model: 'AXIS P3268-LVE',
         serialNumber: 'B8A44F1C92D1',
         itemStatus: 'Returned',
+        location: 'Warehouse B',
         returnedAt: '22/04/2026',
         returnCondition: 'Available',
       },
@@ -198,6 +204,7 @@ const seedLoanItems: LoanItem[] = [
         model: 'AXIS C1210-E',
         serialNumber: 'SIMULATED-010',
         itemStatus: 'Returned',
+        location: 'Storage Room A',
         returnedAt: '22/04/2026',
         returnCondition: 'Available',
       },
@@ -227,6 +234,7 @@ const seedLoanItems: LoanItem[] = [
         model: 'AXIS D2210-VE',
         serialNumber: 'B8A44F9A8184',
         itemStatus: 'Returned',
+        location: 'Office Floor 2',
         returnedAt: '05/05/2026',
         returnCondition: 'Available',
       },

@@ -404,6 +404,10 @@ export function LoansPage() {
                       </th>
 
                       <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
+                        Last Location
+                      </th>
+
+                      <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
                         Status
                       </th>
 
@@ -457,6 +461,12 @@ export function LoansPage() {
 
                         <td className="whitespace-nowrap px-5 py-4 text-sm text-[#555555]">
                           {loan.equipment.length}
+                        </td>
+
+                        <td className="max-w-xs px-5 py-4 text-sm text-[#555555]">
+                          <div className="truncate text-ellipsis">
+                            {loan.equipment.map((eq) => eq.location).join(', ') || 'N/A'}
+                          </div>
                         </td>
 
                         <td className="whitespace-nowrap px-5 py-4">

@@ -13,6 +13,7 @@ type EquipmentJoinRow = {
   category: string
   model: string
   serial_number: string
+  location: string
 }
 
 type LoanItemRow = {
@@ -80,6 +81,7 @@ function mapLoanEquipmentItem(row: LoanItemRow): LoanEquipmentItem | null {
     model: equipment.model,
     serialNumber: equipment.serial_number,
     itemStatus: row.item_status,
+    location: equipment.location,
     returnedAt: formatDatabaseDate(row.returned_at),
     returnCondition: row.return_condition ?? undefined,
     returnNotes: row.return_notes ?? undefined,
@@ -140,7 +142,8 @@ const loanSelect = `
       code,
       category,
       model,
-      serial_number
+      serial_number,
+      location
     )
   )
 `
