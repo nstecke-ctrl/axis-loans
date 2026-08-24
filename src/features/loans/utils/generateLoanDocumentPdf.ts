@@ -158,15 +158,24 @@ export async function generateLoanDocumentPdf(loan: LoanItem) {
   doc.setFillColor(255, 218, 0)
   doc.rect(0, 0, pageWidth, 4, 'F')
 
-  doc.setFontSize(32)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(255, 255, 255)
-  doc.text('AXIS', 40, 35)
+  try {
+    const logoDarkUrl = await loadImageAsDataUrl('/branding/axis-logo-dark.png')
+    const logoDarkProps = doc.getImageProperties(logoDarkUrl)
+    const logoDarkWidth = 100
+    const logoDarkHeight = (logoDarkProps.height * logoDarkWidth) / logoDarkProps.width
 
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(255, 218, 0)
-  doc.text('COMMUNICATIONS', 40, 45)
+    doc.addImage(logoDarkUrl, 'PNG', 40, 20, logoDarkWidth, logoDarkHeight)
+  } catch {
+    doc.setFontSize(32)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(255, 255, 255)
+    doc.text('AXIS', 40, 35)
+
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(255, 218, 0)
+    doc.text('COMMUNICATIONS', 40, 45)
+  }
 
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
