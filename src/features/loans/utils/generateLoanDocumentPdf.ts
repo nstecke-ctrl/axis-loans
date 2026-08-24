@@ -150,76 +150,71 @@ export async function generateLoanDocumentPdf(loan: LoanItem) {
 
   const pageWidth = doc.internal.pageSize.getWidth()
 
-  // Header with clean design
-  doc.setFillColor(245, 245, 242)
-  doc.rect(0, 0, pageWidth, 85, 'F')
+  // Header with Axis branding
+  doc.setFillColor(24, 24, 24)
+  doc.rect(0, 0, pageWidth, 90, 'F')
 
-  // Top yellow accent line
-  doc.setDrawColor(255, 218, 0)
-  doc.setLineWidth(3)
-  doc.line(0, 0, pageWidth, 0)
+  // Yellow accent bar
+  doc.setFillColor(255, 218, 0)
+  doc.rect(0, 0, pageWidth, 4, 'F')
 
-  try {
-    const logoDataUrl = await loadImageAsDataUrl('/branding/axis-logo.png')
-    const logoProperties = doc.getImageProperties(logoDataUrl)
-    const logoWidth = 110
-    const logoHeight = (logoProperties.height * logoWidth) / logoProperties.width
+  doc.setFontSize(32)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(255, 255, 255)
+  doc.text('AXIS', 40, 35)
 
-    doc.addImage(logoDataUrl, 'PNG', 40, 18, logoWidth, logoHeight)
-  } catch {
-    doc.setFontSize(18)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(24, 24, 24)
-    doc.text('AXIS', 40, 35)
-  }
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(255, 218, 0)
+  doc.text('COMMUNICATIONS', 40, 45)
 
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(100, 100, 100)
+  doc.setTextColor(200, 200, 200)
   doc.text('Equipment Loan Document', pageWidth - 40, 20, {
     align: 'right',
   })
 
-  doc.setFontSize(16)
+  doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(24, 24, 24)
+  doc.setTextColor(255, 255, 255)
   doc.text(loan.code, pageWidth - 40, 45, {
     align: 'right',
   })
 
-  doc.setFontSize(8)
+  doc.setFontSize(7)
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(120, 120, 120)
-  doc.text(`Generated: ${currentDocumentDate()}`, pageWidth - 40, 58, {
+  doc.setTextColor(180, 180, 180)
+  doc.text(`Generated: ${currentDocumentDate()}`, pageWidth - 40, 60, {
     align: 'right',
   })
 
   // Status summary
   doc.setFillColor(250, 250, 248)
-  doc.roundedRect(40, 108, 515, 72, 10, 10, 'F')
+  doc.roundedRect(40, 118, 515, 72, 10, 10, 'F')
 
   doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(100, 100, 100)
-  doc.text('CURRENT STATUS', 58, 130)
+  doc.text('CURRENT STATUS', 58, 140)
 
   doc.setFontSize(22)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(17, 17, 17)
-  doc.text(loan.status, 58, 156)
+  doc.text(loan.status, 58, 166)
 
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(90, 90, 90)
-  doc.text(`Company: ${loan.company}`, 305, 130)
-  doc.text(`Follow-up owner: ${loan.responsible}`, 305, 148)
-  doc.text(`Equipment count: ${loan.equipment.length}`, 305, 166)
+  doc.text(`Company: ${loan.company}`, 305, 140)
+  doc.text(`Follow-up owner: ${loan.responsible}`, 305, 158)
+  doc.text(`Equipment count: ${loan.equipment.length}`, 305, 176)
 
   // Recipient section
-  drawSectionTitle(doc, 'Recipient Information', 200)
+  drawSectionTitle(doc, 'Recipient Information', 210)
 
   autoTable(doc, {
-    startY: 230,
+    startY: 240,
     theme: 'grid',
     margin: { left: 40, right: 40 },
     styles: {

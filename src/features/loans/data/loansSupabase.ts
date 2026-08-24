@@ -94,7 +94,7 @@ function mapLoanEquipmentItem(row: LoanItemRow): LoanEquipmentItem | null {
     serialNumber: equipment.serial_number,
     currentLocation: equipment.location,
     lastLocation: equipment.last_location ?? undefined,
-    location: equipment.location,
+    location: equipment.location ?? 'Warehouse',
     itemStatus: row.item_status,
     returnedAt: formatDatabaseDate(row.returned_at),
     returnCondition: row.return_condition ?? undefined,
