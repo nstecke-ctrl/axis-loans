@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Navigate } from 'react-router'
 import { supabase } from '../../lib/supabase'
+import { AppRoleProvider } from './AppRoleContext'
 
 type ProtectedRouteProps = {
   children: ReactNode
@@ -49,7 +50,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       <div className="flex min-h-screen items-center justify-center bg-[#f5f5f3] px-6 text-[#171717]">
         <div className="rounded-3xl border border-[#e5e5e2] bg-white px-8 py-7 text-center shadow-sm">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#666666]">
-            Axis Demo Assets
+            Demo Assets Control
           </p>
 
           <p className="mt-3 text-base font-medium text-[#171717]">
@@ -64,5 +65,5 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/" replace />
   }
 
-  return <>{children}</>
+  return <AppRoleProvider>{children}</AppRoleProvider>
 }

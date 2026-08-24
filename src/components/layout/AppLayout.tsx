@@ -2,23 +2,31 @@ import { useEffect, useState } from 'react'
 import {
   NavLink,
   Outlet,
-  useLocation,
   useNavigate,
 } from 'react-router'
 import type { User } from '@supabase/supabase-js'
+import type { RolePermissions } from '../auth/appRoleCore'
+import { useAppRole } from '../auth/useAppRole'
 import { supabase } from '../../lib/supabase'
 
-const navigationItems = [
+type NavigationItem = {
+  label: string
+  to: string
+  permission?: keyof RolePermissions
+}
+
+const navigationItems: NavigationItem[] = [
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Inventory', to: '/inventory' },
   { label: 'Loans', to: '/loans' },
   { label: 'Loan Requests', to: '/loan-requests' },
   { label: 'Activity Log', to: '/movements' },
+  { label: 'Users', to: '/admin/users', permission: 'canManageUsers' },
 ]
 
 export function AppLayout() {
   const navigate = useNavigate()
-  const location = useLocation()
+  const { role, isLoadingRole, permissions } = useAppRole()
 
   const [user, setUser] = useState<User | null>(null)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -56,10 +64,6 @@ export function AppLayout() {
   }, [])
 
   useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
-
-  useEffect(() => {
     if (!mobileMenuOpen) {
       document.body.style.overflow = ''
       return
@@ -88,6 +92,10 @@ export function AppLayout() {
     navigate('/', { replace: true })
   }
 
+  const visibleNavigationItems = navigationItems.filter(
+    (item) => !item.permission || permissions[item.permission],
+  )
+
   return (
     <div className="min-h-screen bg-[#f5f5f3] text-[#171717]">
       <div className="flex min-h-screen">
@@ -106,7 +114,7 @@ export function AppLayout() {
               </p>
 
               <h1 className="mt-3 text-2xl font-semibold leading-tight tracking-tight text-white">
-                Axis Demo Assets
+                Demo Assets Control
               </h1>
 
               <p className="mt-2 text-sm leading-6 text-white/65">
@@ -121,7 +129,7 @@ export function AppLayout() {
             </p>
 
             <div className="space-y-2">
-              {navigationItems.map((item) => (
+              {visibleNavigationItems.map((item) => (
                 <DesktopNavigationLink
                   key={item.to}
                   label={item.label}
@@ -134,6 +142,8 @@ export function AppLayout() {
           <div className="mt-auto px-5 pb-6">
             <SessionCard
               userEmail={user?.email ?? 'Authenticated user'}
+              role={role}
+              isLoadingRole={isLoadingRole}
               isSigningOut={isSigningOut}
               onSignOut={handleSignOut}
             />
@@ -201,7 +211,7 @@ export function AppLayout() {
                   </p>
 
                   <h2 className="mt-2 text-2xl font-semibold leading-tight tracking-tight text-white">
-                    Axis Demo Assets
+                    Demo Assets Control
                   </h2>
 
                   <p className="mt-2 text-sm leading-6 text-white/65">
@@ -226,11 +236,12 @@ export function AppLayout() {
               </p>
 
               <div className="space-y-2">
-                {navigationItems.map((item) => (
+                {visibleNavigationItems.map((item) => (
                   <MobileNavigationLink
                     key={item.to}
                     label={item.label}
                     to={item.to}
+                    onNavigate={() => setMobileMenuOpen(false)}
                   />
                 ))}
               </div>
@@ -239,6 +250,8 @@ export function AppLayout() {
             <div className="border-t border-white/10 px-5 py-5">
               <SessionCard
                 userEmail={user?.email ?? 'Authenticated user'}
+                role={role}
+                isLoadingRole={isLoadingRole}
                 isSigningOut={isSigningOut}
                 onSignOut={handleSignOut}
               />
@@ -287,13 +300,16 @@ function DesktopNavigationLink({
 function MobileNavigationLink({
   label,
   to,
+  onNavigate,
 }: {
   label: string
   to: string
+  onNavigate: () => void
 }) {
   return (
     <NavLink
       to={to}
+      onClick={onNavigate}
       className={({ isActive }) =>
         `group relative flex w-full items-center rounded-2xl px-4 py-3.5 text-sm font-semibold transition ${
           isActive
@@ -320,10 +336,14 @@ function MobileNavigationLink({
 
 function SessionCard({
   userEmail,
+  role,
+  isLoadingRole,
   isSigningOut,
   onSignOut,
 }: {
   userEmail: string
+  role: string
+  isLoadingRole: boolean
   isSigningOut: boolean
   onSignOut: () => void
 }) {
@@ -338,7 +358,7 @@ function SessionCard({
       </p>
 
       <div className="mt-2 inline-flex rounded-full border border-[#ffda00]/30 bg-[#ffda00]/10 px-3 py-1 text-xs font-semibold text-[#ffda00]">
-        Administrator
+        {isLoadingRole ? 'Loading role...' : role}
       </div>
 
       <div className="mt-5 h-px bg-white/10" />

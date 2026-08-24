@@ -1,5 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/send-loan-reminders",
+      "schedule": "0 13 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

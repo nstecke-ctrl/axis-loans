@@ -12,6 +12,8 @@ export type LoanEquipmentItem = {
   category: string
   model: string
   serialNumber: string
+  currentLocation?: string
+  lastLocation?: string
   itemStatus: LoanItemStatus
   location: string
   returnedAt?: string
@@ -26,6 +28,7 @@ export type LoanItem = {
   contactName: string
   contactEmail: string
   contactPhone: string
+  checkoutHandler: string
   responsible: string
   reason: string
   projectName?: string
@@ -37,6 +40,8 @@ export type LoanItem = {
   actualClosedDate?: string
   status: LoanDisplayStatus
   notes?: string
+  msrpTotalAmount?: number
+  responsibilityText?: string
   equipment: LoanEquipmentItem[]
 }
 
@@ -46,6 +51,7 @@ export type CreateLoanInput = {
   contactName: string
   contactEmail: string
   contactPhone: string
+  checkoutHandler: string
   responsible: string
   reason: string
   projectName?: string
@@ -83,6 +89,7 @@ const seedLoanItems: LoanItem[] = [
     contactName: 'María González',
     contactEmail: 'maria.gonzalez@cliente-demo.cl',
     contactPhone: '+56 9 5555 1111',
+    checkoutHandler: 'Tamara Castro',
     responsible: 'Nicolás Steck',
     reason: 'Technical Evaluation',
     projectName: 'Pedestrian access validation',
@@ -112,6 +119,7 @@ const seedLoanItems: LoanItem[] = [
     contactName: 'Carlos Vega',
     contactEmail: 'carlos.vega@integrador-demo.cl',
     contactPhone: '+56 9 5555 2222',
+    checkoutHandler: 'Estivalía Sanchez',
     responsible: 'Pre-Sales Team',
     reason: 'Demo',
     projectName: 'IP audio for perimeter use cases',
@@ -140,6 +148,7 @@ const seedLoanItems: LoanItem[] = [
     contactName: 'Paula Rojas',
     contactEmail: 'paula.rojas@municipio-demo.cl',
     contactPhone: '+56 9 5555 3333',
+    checkoutHandler: 'Mariano Vega',
     responsible: 'Nicolás Steck',
     reason: 'PoC',
     projectName: 'Urban video security evaluation',
@@ -176,6 +185,7 @@ const seedLoanItems: LoanItem[] = [
     contactName: 'Marcelo Díaz',
     contactEmail: 'marcelo.diaz@sidemo.cl',
     contactPhone: '+56 9 5555 4444',
+    checkoutHandler: 'Tamara Castro',
     responsible: 'Nicolás Steck',
     reason: 'Training',
     projectName: 'Axis technical workshop',
@@ -217,6 +227,7 @@ const seedLoanItems: LoanItem[] = [
     contactName: 'Sales Team',
     contactEmail: 'sales.team@axis-demo.cl',
     contactPhone: '+56 9 5555 5555',
+    checkoutHandler: 'Nicolás Steck',
     responsible: 'Pre-Sales Team',
     reason: 'Internal Demo',
     country: 'Chile',
@@ -370,6 +381,7 @@ export function createLoan(input: CreateLoanInput): LoanItem {
     contactName: input.contactName,
     contactEmail: input.contactEmail,
     contactPhone: input.contactPhone,
+    checkoutHandler: input.checkoutHandler,
     responsible: input.responsible,
     reason: input.reason,
     projectName: input.projectName || undefined,

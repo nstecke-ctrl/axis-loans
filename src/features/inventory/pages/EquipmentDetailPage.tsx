@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
+import { useAppRole } from '../../../components/auth/useAppRole'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import {
   getEquipmentStatusTone,
@@ -8,6 +9,7 @@ import {
 } from '../data/equipment'
 import {
   changeEquipmentStatusInSupabase,
+  createEquipmentInSupabase,
   fetchEquipmentDetailFromSupabase,
   updateEquipmentProfileInSupabase,
 } from '../data/equipmentSupabase'
@@ -32,6 +34,10 @@ type EquipmentEditForm = {
   accessories: string
   conditionNotes: string
   generalNotes: string
+}
+
+type EquipmentCloneForm = Omit<EquipmentEditForm, 'hasNoSerial'> & {
+  location: string
 }
 
 function dateForInput(value: string) {
@@ -77,8 +83,30 @@ function buildInitialEditForm(
   }
 }
 
+function buildInitialCloneForm(
+  equipment: EquipmentItem,
+): EquipmentCloneForm {
+  return {
+    category: equipment.category,
+    brand: equipment.brand,
+    model: equipment.model,
+    partNumber: equipment.partNumber,
+    serialNumber: '',
+    legacyCode: equipment.legacyCode ?? '',
+    acquiredAt: dateForInput(equipment.acquiredAt),
+    accessories: equipment.accessories ?? '',
+    conditionNotes: equipment.conditionNotes ?? '',
+    generalNotes: equipment.generalNotes ?? '',
+    location: equipment.status === 'On Loan'
+      ? equipment.lastLocation ?? equipment.location
+      : equipment.location,
+  }
+}
+
 export function EquipmentDetailPage() {
+  const { permissions } = useAppRole()
   const { equipmentCode } = useParams()
+  const navigate = useNavigate()
 
   const [equipment, setEquipment] = useState<EquipmentItem | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -103,6 +131,11 @@ export function EquipmentDetailPage() {
   const [profileActionError, setProfileActionError] = useState<string | null>(
     null,
   )
+
+  const [showCloneForm, setShowCloneForm] = useState(false)
+  const [cloneForm, setCloneForm] = useState<EquipmentCloneForm | null>(null)
+  const [isCloningEquipment, setIsCloningEquipment] = useState(false)
+  const [cloneActionError, setCloneActionError] = useState<string | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -129,6 +162,7 @@ export function EquipmentDetailPage() {
         if (item) {
           setStatusForm(buildInitialStatusForm(item))
           setEditForm(buildInitialEditForm(item))
+          setCloneForm(buildInitialCloneForm(item))
         }
       } catch (error) {
         if (!isMounted) {
@@ -164,6 +198,8 @@ export function EquipmentDetailPage() {
     setStatusActionError(null)
     setProfileActionMessage(null)
     setProfileActionError(null)
+    setCloneActionError(null)
+    setShowCloneForm(false)
     setShowEditForm(false)
     setShowStatusEditor(true)
   }
@@ -219,6 +255,7 @@ export function EquipmentDetailPage() {
       setEquipment(updatedEquipment)
       setStatusForm(buildInitialStatusForm(updatedEquipment))
       setEditForm(buildInitialEditForm(updatedEquipment))
+      setCloneForm(buildInitialCloneForm(updatedEquipment))
       setShowStatusEditor(false)
       setStatusActionMessage(
         'Equipment status updated and activity recorded successfully.',
@@ -242,9 +279,11 @@ export function EquipmentDetailPage() {
     setEditForm(buildInitialEditForm(equipment))
     setProfileActionMessage(null)
     setProfileActionError(null)
+    setCloneActionError(null)
     setStatusActionMessage(null)
     setStatusActionError(null)
     setShowStatusEditor(false)
+    setShowCloneForm(false)
     setShowEditForm(true)
   }
 
@@ -258,6 +297,41 @@ export function EquipmentDetailPage() {
     value: string | boolean,
   ) {
     setEditForm((currentForm) =>
+      currentForm
+        ? {
+            ...currentForm,
+            [field]: value,
+          }
+        : currentForm,
+    )
+  }
+
+  function openCloneForm() {
+    if (!equipment) {
+      return
+    }
+
+    setCloneForm(buildInitialCloneForm(equipment))
+    setCloneActionError(null)
+    setProfileActionMessage(null)
+    setProfileActionError(null)
+    setStatusActionMessage(null)
+    setStatusActionError(null)
+    setShowStatusEditor(false)
+    setShowEditForm(false)
+    setShowCloneForm(true)
+  }
+
+  function closeCloneForm() {
+    setShowCloneForm(false)
+    setCloneActionError(null)
+  }
+
+  function updateCloneForm(
+    field: keyof EquipmentCloneForm,
+    value: string,
+  ) {
+    setCloneForm((currentForm) =>
       currentForm
         ? {
             ...currentForm,
@@ -340,6 +414,7 @@ export function EquipmentDetailPage() {
       setEquipment(updatedEquipment)
       setStatusForm(buildInitialStatusForm(updatedEquipment))
       setEditForm(buildInitialEditForm(updatedEquipment))
+      setCloneForm(buildInitialCloneForm(updatedEquipment))
       setShowEditForm(false)
       setProfileActionMessage(
         'Equipment profile updated and activity recorded successfully.',
@@ -352,6 +427,52 @@ export function EquipmentDetailPage() {
       )
     } finally {
       setIsSavingProfile(false)
+    }
+  }
+
+  const cloneFormIsReady = Boolean(
+    cloneForm &&
+      cloneForm.category &&
+      cloneForm.brand.trim() &&
+      cloneForm.model.trim() &&
+      cloneForm.serialNumber.trim() &&
+      cloneForm.location.trim() &&
+      !isCloningEquipment,
+  )
+
+  async function handleCreateClone() {
+    if (!equipment || !cloneForm || !cloneFormIsReady) {
+      return
+    }
+
+    setIsCloningEquipment(true)
+    setCloneActionError(null)
+
+    try {
+      const createdEquipment = await createEquipmentInSupabase({
+        category: cloneForm.category,
+        brand: cloneForm.brand.trim(),
+        model: cloneForm.model.trim(),
+        partNumber: cloneForm.partNumber.trim(),
+        serialNumber: cloneForm.serialNumber.trim(),
+        legacyCode: cloneForm.legacyCode.trim() || undefined,
+        status: 'Available',
+        location: cloneForm.location.trim(),
+        acquiredAt: cloneForm.acquiredAt || undefined,
+        accessories: cloneForm.accessories.trim() || undefined,
+        conditionNotes: cloneForm.conditionNotes.trim() || undefined,
+        generalNotes: cloneForm.generalNotes.trim() || undefined,
+      })
+
+      navigate(`/inventory/${createdEquipment.code}`)
+    } catch (error) {
+      setCloneActionError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to clone this equipment.',
+      )
+    } finally {
+      setIsCloningEquipment(false)
     }
   }
 
@@ -460,30 +581,43 @@ export function EquipmentDetailPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {equipment.status === 'On Loan' ? (
-              <button
-                disabled
-                className="cursor-not-allowed rounded-xl border border-[#e5e5e2] bg-[#ecece8] px-4 py-2.5 text-sm font-semibold text-[#888888]"
-              >
-                Status Locked While On Loan
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={openStatusEditor}
-                className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
-              >
-                Change Status
-              </button>
-            )}
+            {permissions.canChangeEquipmentStatus &&
+              (equipment.status === 'On Loan' ? (
+                <button
+                  disabled
+                  className="cursor-not-allowed rounded-xl border border-[#e5e5e2] bg-[#ecece8] px-4 py-2.5 text-sm font-semibold text-[#888888]"
+                >
+                  Status Locked While On Loan
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openStatusEditor}
+                  className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                >
+                  Change Status
+                </button>
+              ))}
 
-            <button
-              type="button"
-              onClick={openEditForm}
-              className="rounded-xl bg-[#ffda00] px-4 py-2.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f2cd00]"
-            >
-              Edit Equipment
-            </button>
+            {permissions.canManageEquipment && (
+              <>
+                <button
+                  type="button"
+                  onClick={openCloneForm}
+                  className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                >
+                  Clone Equipment
+                </button>
+
+                <button
+                  type="button"
+                  onClick={openEditForm}
+                  className="rounded-xl bg-[#ffda00] px-4 py-2.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f2cd00]"
+                >
+                  Edit Equipment
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -502,6 +636,160 @@ export function EquipmentDetailPage() {
             <p className="text-sm font-semibold text-emerald-800">
               {profileActionMessage}
             </p>
+          </article>
+        )}
+
+        {showCloneForm && cloneForm && (
+          <article className="mb-6 rounded-2xl border border-[#ffda00] bg-[#fff8d6] p-6 shadow-sm">
+            <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+              <div>
+                <p className="text-sm font-medium text-[#5d4a00]">
+                  Equipment Clone
+                </p>
+
+                <h3 className="mt-1 text-xl font-semibold text-[#171717]">
+                  Create a similar equipment item
+                </h3>
+
+                <p className="mt-2 max-w-3xl text-sm leading-7 text-[#5d4a00]">
+                  This creates a new available asset using this equipment as a
+                  template. Serial number is intentionally left blank and must
+                  be entered before saving.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeCloneForm}
+                className="text-sm font-semibold text-[#171717] transition hover:text-black hover:underline"
+              >
+                Close
+              </button>
+            </div>
+
+            {cloneActionError && (
+              <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4">
+                <p className="text-sm font-semibold text-red-800">
+                  {cloneActionError}
+                </p>
+              </div>
+            )}
+
+            <div className="mt-6 grid gap-5 md:grid-cols-2">
+              <SelectField
+                label="Category"
+                value={cloneForm.category}
+                onChange={(value) => updateCloneForm('category', value)}
+                options={[
+                  { label: 'Camera', value: 'Camera' },
+                  { label: 'Intercom', value: 'Intercom' },
+                  { label: 'Audio', value: 'Audio' },
+                  { label: 'Radar', value: 'Radar' },
+                  { label: 'Access Control', value: 'Access Control' },
+                  { label: 'Switch', value: 'Switch' },
+                  { label: 'Accessory', value: 'Accessory' },
+                  { label: 'Other', value: 'Other' },
+                ]}
+              />
+
+              <TextField
+                label="Brand"
+                value={cloneForm.brand}
+                placeholder="Example: Axis"
+                onChange={(value) => updateCloneForm('brand', value)}
+              />
+
+              <TextField
+                label="Model"
+                value={cloneForm.model}
+                placeholder="Example: AXIS P3268-LVE"
+                onChange={(value) => updateCloneForm('model', value)}
+              />
+
+              <TextField
+                label="Part Number"
+                value={cloneForm.partNumber}
+                placeholder="Optional"
+                onChange={(value) => updateCloneForm('partNumber', value)}
+              />
+
+              <TextField
+                label="Serial Number"
+                value={cloneForm.serialNumber}
+                placeholder="Required for cloned equipment"
+                onChange={(value) => updateCloneForm('serialNumber', value)}
+              />
+
+              <TextField
+                label="Location"
+                value={cloneForm.location}
+                placeholder="Required"
+                onChange={(value) => updateCloneForm('location', value)}
+              />
+
+              <TextField
+                label="Legacy Code"
+                value={cloneForm.legacyCode}
+                placeholder="Optional"
+                onChange={(value) => updateCloneForm('legacyCode', value)}
+              />
+
+              <DateField
+                label="Acquisition Date"
+                value={cloneForm.acquiredAt}
+                onChange={(value) => updateCloneForm('acquiredAt', value)}
+              />
+            </div>
+
+            <div className="mt-6 space-y-5">
+              <TextareaField
+                label="Included Accessories"
+                value={cloneForm.accessories}
+                placeholder="Example: power supply, box, bracket, cabling."
+                onChange={(value) => updateCloneForm('accessories', value)}
+              />
+
+              <TextareaField
+                label="Condition / Technical Notes"
+                value={cloneForm.conditionNotes}
+                placeholder="Operational or technical observations."
+                onChange={(value) =>
+                  updateCloneForm('conditionNotes', value)
+                }
+              />
+
+              <TextareaField
+                label="General Notes"
+                value={cloneForm.generalNotes}
+                placeholder="Useful comments for future reference."
+                onChange={(value) => updateCloneForm('generalNotes', value)}
+              />
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 md:flex-row md:justify-end">
+              <button
+                type="button"
+                onClick={closeCloneForm}
+                className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCreateClone}
+                disabled={!cloneFormIsReady || isCloningEquipment}
+                className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                  cloneFormIsReady && !isCloningEquipment
+                    ? 'bg-[#181818] text-white hover:bg-black'
+                    : 'cursor-not-allowed bg-[#ecece8] text-[#888888]'
+                }`}
+              >
+                {isCloningEquipment
+                  ? 'Creating Clone...'
+                  : 'Create Cloned Equipment'}
+              </button>
+            </div>
           </article>
         )}
 
@@ -832,6 +1120,10 @@ export function EquipmentDetailPage() {
                   value={equipment.location}
                 />
                 <DetailField
+                  label="Last Site"
+                  value={equipment.lastLocation ?? equipment.location}
+                />
+                <DetailField
                   label="Acquisition Date"
                   value={equipment.acquiredAt}
                 />
@@ -938,6 +1230,16 @@ export function EquipmentDetailPage() {
 
                   <p className="mt-2 font-semibold text-[#171717]">
                     {equipment.location}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-[#fafaf8] p-4">
+                  <p className="text-sm font-medium text-[#666666]">
+                    Last Site
+                  </p>
+
+                  <p className="mt-2 font-semibold text-[#171717]">
+                    {equipment.lastLocation ?? equipment.location}
                   </p>
                 </div>
               </div>

@@ -16,6 +16,7 @@ type EquipmentRow = {
   serial_number: string
   status: EquipmentStatus
   location: string
+  last_location: string | null
   acquired_at: string
   legacy_code: string | null
   accessories: string | null
@@ -58,6 +59,7 @@ function mapEquipmentRowToItem(row: EquipmentRow): EquipmentItem {
     serialNumber: row.serial_number,
     status: row.status,
     location: row.location,
+    lastLocation: row.last_location ?? undefined,
     acquiredAt: formatDatabaseDate(row.acquired_at),
     legacyCode: row.legacy_code ?? undefined,
     accessories: row.accessories ?? undefined,
@@ -114,6 +116,7 @@ export async function fetchEquipmentItemsFromSupabase() {
         serial_number,
         status,
         location,
+        last_location,
         acquired_at,
         legacy_code,
         accessories,
@@ -146,6 +149,7 @@ export async function fetchEquipmentDetailFromSupabase(
         serial_number,
         status,
         location,
+        last_location,
         acquired_at,
         legacy_code,
         accessories,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
 import {
   getLoanRequestStatusTone,
@@ -22,6 +22,15 @@ function normalizeSearchText(value: string) {
     .trim()
 }
 
+function getInitialQuickFilter(value: string | null): QuickFilter {
+  return value === 'Pending' ||
+    value === 'Approved' ||
+    value === 'Rejected' ||
+    value === 'Converted to Loan'
+    ? value
+    : 'All'
+}
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -33,6 +42,8 @@ function formatCurrency(value: number) {
 
 export function LoanRequestsPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const requestedQuickFilter = searchParams.get('quick')
 
   const [loanRequests, setLoanRequests] = useState<LoanRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -40,7 +51,9 @@ export function LoanRequestsPage() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('All')
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>(() =>
+    getInitialQuickFilter(requestedQuickFilter),
+  )
 
   useEffect(() => {
     let isMounted = true
@@ -92,6 +105,7 @@ export function LoanRequestsPage() {
           request.requesterCompany,
           request.requesterEmail,
           request.requesterType,
+          request.requestedHandler,
         ].join(' '),
       )
 
@@ -311,6 +325,10 @@ export function LoanRequestsPage() {
                       </th>
 
                       <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
+                        Requested To
+                      </th>
+
+                      <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
                         Preferred Checkout
                       </th>
 
@@ -367,6 +385,10 @@ export function LoanRequestsPage() {
 
                         <td className="whitespace-nowrap px-5 py-4 text-sm text-[#555555]">
                           {request.requesterType}
+                        </td>
+
+                        <td className="whitespace-nowrap px-5 py-4 text-sm text-[#555555]">
+                          {request.requestedHandler}
                         </td>
 
                         <td className="whitespace-nowrap px-5 py-4 text-sm text-[#555555]">

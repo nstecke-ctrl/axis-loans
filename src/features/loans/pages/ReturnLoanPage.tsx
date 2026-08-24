@@ -307,7 +307,7 @@ export function ReturnLoanPage() {
 
           <Link
             to="/loans"
-            className="mt-6 inline-flex rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+            className="mt-6 inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl bg-[#181818] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
           >
             Back to Loans
           </Link>
@@ -334,7 +334,7 @@ export function ReturnLoanPage() {
 
           <Link
             to="/loans"
-            className="mt-6 inline-flex rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+            className="mt-6 inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl bg-[#181818] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
           >
             Back to Loans
           </Link>
@@ -491,6 +491,10 @@ export function ReturnLoanPage() {
                         <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
                           Notes
                         </th>
+
+                        <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
+                          Return Site
+                        </th>
                       </tr>
                     </thead>
 
@@ -518,6 +522,15 @@ export function ReturnLoanPage() {
 
                           <td className="min-w-72 px-5 py-4 text-sm text-[#555555]">
                             {item.notes || 'No notes'}
+                          </td>
+
+                          <td className="min-w-48 px-5 py-4 text-sm text-[#555555]">
+                            {item.condition === 'Available'
+                              ? item.equipment.lastLocation ??
+                                'Previous site'
+                              : item.condition === 'Under Review'
+                                ? 'Technical Review'
+                                : 'Pending Assessment'}
                           </td>
                         </tr>
                       ))}
@@ -594,21 +607,21 @@ export function ReturnLoanPage() {
                 <div className="mt-6 space-y-3">
                   <Link
                     to={`/loans/${loan.code}`}
-                    className="inline-flex w-full justify-center rounded-xl bg-[#181818] px-4 py-3 text-sm font-semibold text-white transition hover:bg-black"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#181818] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-black"
                   >
                     Back to Loan
                   </Link>
 
                   <Link
                     to="/loans"
-                    className="inline-flex w-full justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     Back to Loan List
                   </Link>
 
                   <Link
                     to="/inventory"
-                    className="inline-flex w-full justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     Review Updated Inventory
                   </Link>
@@ -727,7 +740,7 @@ export function ReturnLoanPage() {
                   <button
                     type="button"
                     onClick={selectAllPendingItems}
-                    className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     Select All
                   </button>
@@ -735,7 +748,7 @@ export function ReturnLoanPage() {
                   <button
                     type="button"
                     onClick={clearAllSelections}
-                    className="rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     Clear
                   </button>
@@ -773,6 +786,13 @@ export function ReturnLoanPage() {
 
                             <p className="mt-2 text-lg font-semibold text-[#171717]">
                               {equipment.model}
+                            </p>
+
+                            <p className="mt-1 text-sm text-[#555555]">
+                              Previous site:{' '}
+                              <span className="font-medium text-[#171717]">
+                                {equipment.lastLocation ?? 'Not registered'}
+                              </span>
                             </p>
 
                             <p className="mt-1 text-sm text-[#555555]">

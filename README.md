@@ -1,73 +1,91 @@
-# React + TypeScript + Vite
+# Demo Assets Control
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicacion web para administrar inventario de equipos demo, prestamos,
+devoluciones, solicitudes publicas y trazabilidad operativa.
 
-Currently, two official plugins are available:
+## Que incluye
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Inicio de sesion con Supabase.
+- Dashboard con resumen de inventario, prestamos vencidos, proximas devoluciones
+  y solicitudes pendientes.
+- Inventario de equipos con busqueda, filtros, carga manual e importacion desde
+  Excel.
+- Prestamos de equipos con detalle, edicion, devolucion y generacion de PDF.
+- Formulario publico para solicitar equipos.
+- Historial de movimientos.
 
-## React Compiler
+## Tecnologia
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React + TypeScript
+- Vite
+- Tailwind CSS
+- Supabase
+- jsPDF
+- SheetJS para importacion de Excel
+- ZXing para escaneo de codigos
 
-## Expanding the ESLint configuration
+## Requisitos
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Node.js 24 o superior recomendado.
+- Un proyecto de Supabase configurado.
+- Variables de entorno locales.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+> Nota: con Node 22 la instalacion funciona, pero una dependencia de escaneo
+> declara compatibilidad con Node 24 o superior.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Configuracion inicial
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Copiar el archivo de ejemplo:
+
+```bash
+cp .env.example .env.local
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. Completar `.env.local` con los datos de Supabase:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=tu_clave_publica
 ```
+
+3. Instalar dependencias:
+
+```bash
+npm ci
+```
+
+4. Ejecutar la app en modo desarrollo:
+
+```bash
+npm run dev
+```
+
+5. Abrir la URL que muestra la terminal, normalmente:
+
+```text
+http://localhost:5173
+```
+
+## Comandos utiles
+
+```bash
+npm run dev      # abrir la app localmente
+npm run build    # validar TypeScript y generar version de produccion
+npm run lint     # revisar calidad basica del codigo
+npm run preview  # previsualizar el build de produccion
+```
+
+## Despliegue
+
+El proyecto incluye `vercel.json` para funcionar como una single-page app en
+Vercel. En Vercel tambien hay que cargar las mismas variables de entorno:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+## Estado actual revisado
+
+- El build de produccion compila correctamente.
+- El lint queda preparado para validar cambios antes de publicar.
+- El README original de Vite fue reemplazado por una guia especifica del
+  proyecto.

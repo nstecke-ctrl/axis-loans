@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { StatusBadge } from '../../../components/shared/StatusBadge'
+import { internalContactOptions } from '../../../lib/internalContacts'
 import {
   getEquipmentStatusTone,
   type EquipmentItem,
@@ -10,6 +11,7 @@ import type { LoanRequest } from '../../loan-requests/data/loanRequests'
 import { fetchLoanRequestDetailFromSupabase } from '../../loan-requests/data/loanRequestsSupabase'
 import type { LoanItem } from '../data/loans'
 import { createInternalLoanInSupabase } from '../data/loansSupabase'
+import { generateLoanDocumentPdf } from '../utils/generateLoanDocumentPdf'
 
 type NewLoanForm = {
   recipientType: string
@@ -20,6 +22,7 @@ type NewLoanForm = {
   country: string
   city: string
   address: string
+  checkoutHandler: string
   responsible: string
   reason: string
   projectName: string
@@ -43,6 +46,7 @@ const defaultFormState: NewLoanForm = {
   country: 'Chile',
   city: '',
   address: '',
+  checkoutHandler: 'Tamara Castro',
   responsible: 'Nicolás Steck',
   reason: '',
   projectName: '',
@@ -87,6 +91,7 @@ function buildFormFromRequest(request: LoanRequest): NewLoanForm {
     country: request.destinationCountry,
     city: request.destinationCity,
     address: '',
+    checkoutHandler: request.requestedHandler,
     responsible: 'Nicolás Steck',
     reason: 'Requested Demo Equipment',
     projectName: '',
@@ -244,6 +249,7 @@ export function NewLoanPage() {
   const isFormReady = Boolean(
     form.recipientType &&
       form.company &&
+      form.checkoutHandler &&
       form.responsible &&
       form.reason &&
       form.checkoutDate &&
@@ -292,6 +298,7 @@ export function NewLoanPage() {
           contactName: form.contactName,
           contactEmail: form.contactEmail,
           contactPhone: form.contactPhone,
+          checkoutHandler: form.checkoutHandler,
           responsible: form.responsible,
           reason: form.reason,
           projectName: form.projectName || undefined,
@@ -374,14 +381,14 @@ export function NewLoanPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               to="/loan-requests"
-              className="inline-flex rounded-xl bg-[#181818] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-black"
+              className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl bg-[#181818] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
             >
               Back to Loan Requests
             </Link>
 
             <Link
               to="/loans"
-              className="inline-flex rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+              className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
             >
               Back to Loans
             </Link>
@@ -552,29 +559,39 @@ export function NewLoanPage() {
                 <div className="mt-6 space-y-3">
                   <Link
                     to="/loans"
-                    className="inline-flex w-full justify-center rounded-xl bg-[#181818] px-4 py-3 text-sm font-semibold text-white transition hover:bg-black"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#181818] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-black"
                   >
                     Back to Loans
                   </Link>
 
                   <Link
                     to="/inventory"
-                    className="inline-flex w-full justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     View Updated Inventory
                   </Link>
 
                   <Link
                     to={`/loans/${submittedLoan.loan.code}`}
-                    className="inline-flex w-full justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     View Loan Detail
                   </Link>
 
                   <button
                     type="button"
+                    onClick={() =>
+                      void generateLoanDocumentPdf(submittedLoan.loan)
+                    }
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                  >
+                    Download Loan PDF
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={handleCreateAnotherLoan}
-                    className="w-full rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#d8d8d4] bg-white px-4 py-3 text-center text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8]"
                   >
                     Register Another Loan
                   </button>
@@ -810,14 +827,17 @@ export function NewLoanPage() {
 
               <div className="mt-6 grid gap-5 md:grid-cols-2">
                 <SelectField
-                  label="Internal Owner"
+                  label="Delivered By"
+                  value={form.checkoutHandler}
+                  onChange={(value) => updateForm('checkoutHandler', value)}
+                  options={internalContactOptions}
+                />
+
+                <SelectField
+                  label="Follow-Up Owner"
                   value={form.responsible}
                   onChange={(value) => updateForm('responsible', value)}
-                  options={[
-                    { label: 'Nicolás Steck', value: 'Nicolás Steck' },
-                    { label: 'Pre-Sales Team', value: 'Pre-Sales Team' },
-                    { label: 'Sales Team', value: 'Sales Team' },
-                  ]}
+                  options={internalContactOptions}
                 />
 
                 <SelectField
@@ -1000,7 +1020,12 @@ export function NewLoanPage() {
                 />
 
                 <SummaryField
-                  label="Internal Owner"
+                  label="Delivered By"
+                  value={form.checkoutHandler || 'Pending'}
+                />
+
+                <SummaryField
+                  label="Follow-Up Owner"
                   value={form.responsible || 'Pending'}
                 />
 
