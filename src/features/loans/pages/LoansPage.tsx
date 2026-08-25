@@ -492,7 +492,16 @@ export function LoansPage() {
 
                         <td className="max-w-xs px-5 py-4 text-sm text-[#555555]">
                           <div className="truncate text-ellipsis">
-                            {loan.equipment.map((eq) => eq.location).join(', ') || 'N/A'}
+                            {Array.from(
+                              new Set(
+                                loan.equipment.map(
+                                  (eq) =>
+                                    eq.lastLocation ??
+                                    eq.currentLocation ??
+                                    'Not registered',
+                                ),
+                              ),
+                            ).join(', ') || 'Not registered'}
                           </div>
                         </td>
 

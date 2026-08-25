@@ -150,53 +150,51 @@ export async function generateLoanDocumentPdf(loan: LoanItem) {
 
   const pageWidth = doc.internal.pageSize.getWidth()
 
-  // Header with Axis branding
-  doc.setFillColor(24, 24, 24)
-  doc.rect(0, 0, pageWidth, 90, 'F')
-
-  // Yellow accent bar
-  doc.setFillColor(255, 218, 0)
-  doc.rect(0, 0, pageWidth, 4, 'F')
-
+  // Header on plain white: dark logo, no ink-heavy band
   try {
-    const logoDarkUrl = await loadImageAsDataUrl('/branding/axis-logo-dark.png')
-    const logoDarkProps = doc.getImageProperties(logoDarkUrl)
-    const logoDarkWidth = 100
-    const logoDarkHeight = (logoDarkProps.height * logoDarkWidth) / logoDarkProps.width
+    const logoDataUrl = await loadImageAsDataUrl('/branding/axis-logo-dark.png')
+    const logoProperties = doc.getImageProperties(logoDataUrl)
+    const logoWidth = 120
+    const logoHeight = (logoProperties.height * logoWidth) / logoProperties.width
 
-    doc.addImage(logoDarkUrl, 'PNG', 40, 20, logoDarkWidth, logoDarkHeight)
+    doc.addImage(logoDataUrl, 'PNG', 40, 34, logoWidth, logoHeight)
   } catch {
-    doc.setFontSize(32)
+    doc.setFontSize(24)
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(255, 255, 255)
-    doc.text('AXIS', 40, 35)
+    doc.setTextColor(17, 17, 17)
+    doc.text('AXIS', 40, 58)
 
-    doc.setFontSize(8)
+    doc.setFontSize(7)
     doc.setFont('helvetica', 'normal')
-    doc.setTextColor(255, 218, 0)
-    doc.text('COMMUNICATIONS', 40, 45)
+    doc.setTextColor(90, 90, 90)
+    doc.text('COMMUNICATIONS', 40, 70)
   }
 
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(200, 200, 200)
-  doc.text('Equipment Loan Document', pageWidth - 40, 20, {
+  doc.setTextColor(120, 120, 120)
+  doc.text('Equipment Loan Document', pageWidth - 40, 44, {
     align: 'right',
   })
 
-  doc.setFontSize(14)
+  doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(255, 255, 255)
-  doc.text(loan.code, pageWidth - 40, 45, {
+  doc.setTextColor(17, 17, 17)
+  doc.text(loan.code, pageWidth - 40, 66, {
     align: 'right',
   })
 
-  doc.setFontSize(7)
+  doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(180, 180, 180)
-  doc.text(`Generated: ${currentDocumentDate()}`, pageWidth - 40, 60, {
+  doc.setTextColor(140, 140, 140)
+  doc.text(`Generated: ${currentDocumentDate()}`, pageWidth - 40, 80, {
     align: 'right',
   })
+
+  // Single thin rule closing the header
+  doc.setDrawColor(255, 218, 0)
+  doc.setLineWidth(2)
+  doc.line(40, 96, pageWidth - 40, 96)
 
   // Status summary
   doc.setFillColor(250, 250, 248)
@@ -360,12 +358,13 @@ export async function generateLoanDocumentPdf(loan: LoanItem) {
       lineWidth: 0.4,
     },
     columnStyles: {
-      0: { cellWidth: 68 },
-      1: { cellWidth: 62 },
-      2: { cellWidth: 138 },
-      3: { cellWidth: 92 },
-      4: { cellWidth: 62 },
-      5: { cellWidth: 90 },
+      0: { cellWidth: 62 },
+      1: { cellWidth: 55 },
+      2: { cellWidth: 108 },
+      3: { cellWidth: 80 },
+      4: { cellWidth: 52 },
+      5: { cellWidth: 88 },
+      6: { cellWidth: 70 },
     },
     head: [
       [
@@ -374,6 +373,7 @@ export async function generateLoanDocumentPdf(loan: LoanItem) {
         'Model',
         'Serial',
         'Status',
+        'Last Location',
         'Returned At',
       ],
     ],
@@ -383,6 +383,9 @@ export async function generateLoanDocumentPdf(loan: LoanItem) {
       equipment.model,
       equipment.serialNumber,
       equipment.itemStatus,
+      equipment.lastLocation ??
+        equipment.currentLocation ??
+        'Not registered',
       equipment.returnedAt ?? 'Pending',
     ]),
   })

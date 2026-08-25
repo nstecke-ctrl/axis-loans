@@ -481,10 +481,6 @@ export function ReturnLoanPage() {
                         </th>
 
                         <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
-                          Location
-                        </th>
-
-                        <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
                           Condition
                         </th>
 
@@ -507,10 +503,6 @@ export function ReturnLoanPage() {
 
                           <td className="min-w-64 px-5 py-4 text-sm text-[#555555]">
                             {item.equipment.model}
-                          </td>
-
-                          <td className="whitespace-nowrap px-5 py-4 text-sm text-[#555555]">
-                            {item.equipment.location || 'N/A'}
                           </td>
 
                           <td className="whitespace-nowrap px-5 py-4">
@@ -564,7 +556,7 @@ export function ReturnLoanPage() {
                           </th>
 
                           <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
-                            Location
+                            Last Location
                           </th>
 
                           <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
@@ -585,7 +577,9 @@ export function ReturnLoanPage() {
                             </td>
 
                             <td className="whitespace-nowrap px-5 py-4 text-sm text-[#555555]">
-                              {item.location || 'N/A'}
+                              {item.lastLocation ??
+                                item.currentLocation ??
+                                'Not registered'}
                             </td>
 
                             <td className="whitespace-nowrap px-5 py-4">

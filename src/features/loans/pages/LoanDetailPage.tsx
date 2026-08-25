@@ -980,7 +980,7 @@ export function LoanDetailPage() {
                       </th>
 
                       <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
-                        Location
+                        Last Location
                       </th>
 
                       <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-[#777777]">
@@ -1023,7 +1023,9 @@ export function LoanDetailPage() {
                         </td>
 
                         <td className="max-w-xs px-5 py-4 text-sm text-[#555555]">
-                          {equipment.location || 'N/A'}
+                          {equipment.lastLocation ??
+                            equipment.currentLocation ??
+                            'Not registered'}
                         </td>
 
                         <td className="whitespace-nowrap px-5 py-4 text-sm text-[#555555]">
