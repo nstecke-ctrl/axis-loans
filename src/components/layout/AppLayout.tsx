@@ -20,6 +20,7 @@ const navigationItems: NavigationItem[] = [
   { label: 'Inventory', to: '/inventory' },
   { label: 'Loans', to: '/loans' },
   { label: 'Loan Requests', to: '/loan-requests' },
+  { label: 'Reports', to: '/reports' },
   { label: 'Activity Log', to: '/movements' },
   { label: 'Users', to: '/admin/users', permission: 'canManageUsers' },
 ]

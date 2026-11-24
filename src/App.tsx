@@ -65,6 +65,11 @@ const ReturnLoanPage = lazy(() =>
     default: module.ReturnLoanPage,
   })),
 )
+const ReportsPage = lazy(() =>
+  import('./features/reports/pages/ReportsPage').then((module) => ({
+    default: module.ReportsPage,
+  })),
+)
 const MovementsPage = lazy(() =>
   import('./features/movements/pages/MovementsPage').then((module) => ({
     default: module.MovementsPage,
@@ -158,6 +163,8 @@ function App() {
             path="/loan-requests/:requestCode"
             element={<LoanRequestDetailPage />}
           />
+
+          <Route path="/reports" element={<ReportsPage />} />
 
           <Route path="/movements" element={<MovementsPage />} />
 
