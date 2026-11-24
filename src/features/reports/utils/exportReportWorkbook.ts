@@ -1,133 +1,286 @@
-import { reportPeriodLabels, type LoansReport, type RankRow } from './reportMetrics'
+import type { WorkSheet } from 'xlsx'
+import {
+  reportPeriodLabels,
+  type LoansReport,
+  type RankRow,
+  type UnitRankRow,
+} from './reportMetrics'
 
-function percent(value: number | null) {
-  return value === null ? 'n/a' : `${Math.round(value * 100)}%`
+type Cell = string | number | Date | null
+type ColumnFormat = 'text' | 'int' | 'usd' | 'date' | 'pct'
+
+type Column = {
+  header: string
+  width: number
+  format?: ColumnFormat
 }
 
-function round(value: number | null, digits = 1) {
-  return value === null ? 'n/a' : Number(value.toFixed(digits))
+const numberFormats: Record<Exclude<ColumnFormat, 'text'>, string> = {
+  int: '0',
+  usd: '"US$" #,##0',
+  date: 'dd/mm/yyyy',
+  pct: '0%',
 }
 
-function rankSheet(rows: RankRow[], labelHeader: string) {
-  return rows.map((row) => ({
-    [labelHeader]: row.label,
-    Loans: row.loans,
-    Units: row.units,
-    'Open now': row.openNow,
-    'Overdue now': row.overdueNow,
-  }))
+export function describeDaysLeft(daysLeft: number | null) {
+  if (daysLeft === null) return 'No return date'
+  if (daysLeft < 0) return `Overdue · ${-daysLeft} day${daysLeft === -1 ? '' : 's'}`
+  if (daysLeft === 0) return 'Due today'
+  if (daysLeft <= 7) return `Due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`
+  return `On track · ${daysLeft} days left`
+}
+
+function formatGeneratedAt(date: Date) {
+  return new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+  }).format(date)
 }
 
 export async function exportReportWorkbook(report: LoansReport, owner: string) {
   const XLSX = await import('xlsx')
   const workbook = XLSX.utils.book_new()
+  const ownerLabel = owner === 'All' ? 'All internal owners' : owner
+  const scopeLine = `${reportPeriodLabels[report.period]} · ${ownerLabel} · Generated ${formatGeneratedAt(report.generatedAt)}`
 
-  const summary = [
-    { Metric: 'Generated', Value: report.generatedAt.toLocaleString('en-GB') },
-    { Metric: 'Period', Value: reportPeriodLabels[report.period] },
-    { Metric: 'Internal owner filter', Value: owner },
-    { Metric: '— Current snapshot —', Value: '' },
-    { Metric: 'Open loans', Value: report.snapshot.openLoans },
-    { Metric: 'On time (Active + Due Soon)', Value: report.snapshot.onTimeLoans },
-    { Metric: 'Due within 7 days', Value: report.snapshot.dueSoonLoans },
-    { Metric: 'Overdue', Value: report.snapshot.overdueLoans },
-    { Metric: 'Units in the field', Value: report.snapshot.unitsOut },
-    { Metric: 'Clients holding equipment', Value: report.snapshot.clientsWithEquipment },
-    { Metric: 'MSRP in the field (USD, priced units)', Value: Math.round(report.snapshot.msrpOut) },
-    {
-      Metric: 'Units with known MSRP',
-      Value: `${report.snapshot.pricedUnitsOut} of ${report.snapshot.unitsOut}`,
-    },
-    { Metric: '— Fleet —', Value: '' },
-    { Metric: 'Total equipment', Value: report.fleet.total },
-    { Metric: 'Available', Value: report.fleet.available },
-    { Metric: 'On loan', Value: report.fleet.onLoan },
-    { Metric: 'Reserved', Value: report.fleet.reserved },
-    { Metric: 'Under review', Value: report.fleet.underReview },
-    { Metric: 'Damaged', Value: report.fleet.damaged },
-    { Metric: 'Utilization (on loan / lendable)', Value: percent(report.fleet.utilization) },
-    { Metric: 'Available, never loaned', Value: report.fleet.neverLoaned },
-    { Metric: '— Activity in period —', Value: '' },
-    { Metric: 'Loans opened', Value: report.activity.loansOpened },
-    { Metric: 'Units lent', Value: report.activity.unitsLent },
-    { Metric: 'Unique clients', Value: report.activity.uniqueClients },
-    { Metric: 'Loans closed', Value: report.activity.loansClosed },
-    { Metric: 'Closed on time', Value: report.activity.closedOnTime },
-    { Metric: 'Closed late', Value: report.activity.closedLate },
-    { Metric: 'On-time return rate', Value: percent(report.activity.onTimeRate) },
-    { Metric: 'Average loan duration (days)', Value: round(report.activity.avgDurationDays) },
-    { Metric: 'Median loan duration (days)', Value: round(report.activity.medianDurationDays) },
-    { Metric: 'Average days late (late returns)', Value: round(report.activity.avgDaysLate) },
-    { Metric: 'Loan requests received', Value: report.requests.total },
-    { Metric: 'Request conversion rate', Value: percent(report.requests.conversionRate) },
-  ]
+  function applyFormats(sheet: WorkSheet, columns: Column[], firstDataRow: number, rowCount: number) {
+    columns.forEach((column, columnIndex) => {
+      if (!column.format || column.format === 'text') return
+      for (let row = firstDataRow; row < firstDataRow + rowCount; row += 1) {
+        const cell = sheet[XLSX.utils.encode_cell({ r: row, c: columnIndex })]
+        if (cell && (cell.t === 'n' || cell.t === 'd')) {
+          cell.z = numberFormats[column.format]
+        }
+      }
+    })
+  }
 
-  const sheets: Array<[string, Record<string, unknown>[]]> = [
-    ['Summary', summary],
-    [
-      'Overdue',
-      report.overdueLoans.map((row) => ({
-        Loan: row.code,
-        Client: row.company,
-        'Internal owner': row.responsible,
-        'Expected return': row.expectedReturnDate,
-        'Days overdue': row.daysOverdue,
-        'Pending units': row.pendingUnits,
-        'Pending MSRP (USD)': row.pendingMsrp ?? 'n/a',
-      })),
-    ],
-    [
-      'Partial returns',
-      report.partialLoans.map((row) => ({
-        Loan: row.code,
-        Client: row.company,
-        'Internal owner': row.responsible,
-        Status: row.status,
-        'Expected return': row.expectedReturnDate,
-        'Returned units': row.returnedUnits,
-        'Pending units': row.pendingUnits,
-        'Pending models': row.pendingModels,
-      })),
-    ],
-    [
-      'Monthly trend',
-      report.monthlyTrend.map((row) => ({
-        Month: row.label,
-        'Loans opened': row.opened,
-        'Loans closed': row.closed,
-      })),
-    ],
-    ['By owner', rankSheet(report.byOwner, 'Internal owner')],
-    ['By handler', rankSheet(report.byHandler, 'Checkout handler')],
-    ['By client', rankSheet(report.byClient, 'Client')],
-    ['By recipient type', rankSheet(report.byRecipientType, 'Recipient type')],
-    ['By reason', rankSheet(report.byReason, 'Reason')],
-    ['By destination', rankSheet(report.byCity, 'Destination')],
-    [
-      'By model',
-      report.byModel.map((row) => ({ Model: row.label, Units: row.units, Loans: row.loans })),
-    ],
-    [
-      'By category',
-      report.byCategory.map((row) => ({ Category: row.label, Units: row.units, Loans: row.loans })),
-    ],
-    [
-      'Never loaned',
-      report.idleEquipment.map((row) => ({
-        Code: row.code,
-        Category: row.category,
-        Model: row.model,
-        Location: row.location,
-        Acquired: row.acquiredAt,
-      })),
-    ],
-  ]
+  /** Title, subtitle, blank line, then a filterable table. */
+  function tableSheet(name: string, title: string, description: string, columns: Column[], rows: Cell[][]) {
+    const headerRow = 3
+    const body = rows.length > 0 ? rows : [[`Nothing to show for ${ownerLabel.toLowerCase()} in this view.`]]
+    const sheet = XLSX.utils.aoa_to_sheet(
+      [[title], [`${description}  —  ${scopeLine}`], [], columns.map((c) => c.header), ...body],
+      { cellDates: true },
+    )
 
-  for (const [name, rows] of sheets) {
-    const sheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Info: 'No data' }])
+    sheet['!cols'] = columns.map((column) => ({ wch: column.width }))
+
+    if (rows.length > 0) {
+      sheet['!autofilter'] = {
+        ref: XLSX.utils.encode_range({
+          s: { r: headerRow, c: 0 },
+          e: { r: headerRow + rows.length, c: columns.length - 1 },
+        }),
+      }
+      applyFormats(sheet, columns, headerRow + 1, rows.length)
+    }
+
     XLSX.utils.book_append_sheet(workbook, sheet, name)
   }
 
+  // ---------------------------------------------------------------- Summary
+  const { snapshot, fleet, activity } = report
+  const percentOrDash = (value: number | null) => (value === null ? '—' : value)
+  const daysOrDash = (value: number | null) => (value === null ? '—' : Math.round(value))
+
+  const summaryRows: Cell[][] = [
+    ['TODAY — status of loans currently open', null, null],
+    ['Open loans', snapshot.openLoans, 'Loans with equipment still outside the warehouse.'],
+    ['On time', snapshot.onTimeLoans, 'Open loans not yet past their expected return date.'],
+    ['Due in the next 7 days', snapshot.dueSoonLoans, 'Included in "On time" — contact them before they become overdue.'],
+    ['Overdue', snapshot.overdueLoans, 'Past the expected return date. See the "Open loans" sheet, sorted by urgency.'],
+    ['Units in the field', snapshot.unitsOut, 'Individual pieces of equipment not yet returned.'],
+    ['Clients holding equipment', snapshot.clientsWithEquipment, 'Distinct companies with at least one open loan.'],
+  ]
+
+  if (snapshot.pricedUnitsOut > 0) {
+    summaryRows.push([
+      'MSRP value in the field',
+      Math.round(snapshot.msrpOut),
+      `Axis list price of ${snapshot.pricedUnitsOut} of ${snapshot.unitsOut} units (the rest have no pricelist match).`,
+    ])
+  }
+
+  summaryRows.push(
+    [null, null, null],
+    [`ACTIVITY — ${reportPeriodLabels[report.period].toUpperCase()}`, null, null],
+    ['Loans opened', activity.loansOpened, 'Loans with a checkout date in this period.'],
+    ['Units lent', activity.unitsLent, 'Pieces of equipment that left in those loans.'],
+    ['Clients served', activity.uniqueClients, 'Distinct companies that received equipment.'],
+    ['Loans closed', activity.loansClosed, 'Loans fully returned in this period.'],
+    ['Returned on time', percentOrDash(activity.onTimeRate), `${activity.closedOnTime} on time, ${activity.closedLate} late.`],
+    ['Average loan length (days)', daysOrDash(activity.avgDurationDays), 'From checkout to full return, closed loans only.'],
+    [null, null, null],
+    ['FLEET — whole inventory', null, null],
+    ['Total equipment', fleet.total, null],
+    ['Available in warehouse', fleet.available, null],
+    ['On loan', fleet.onLoan, null],
+    ['Under review / damaged', fleet.underReview + fleet.damaged, 'Not available to lend.'],
+    ['Fleet utilization', fleet.utilization, 'On loan ÷ lendable units (excludes damaged).'],
+    ['Available but never loaned', fleet.neverLoaned, 'Listed in the "Never loaned" sheet.'],
+  )
+
+  const summarySheet = XLSX.utils.aoa_to_sheet([
+    ['Demo Equipment Loans — Report'],
+    [scopeLine],
+    [],
+    ['Indicator', 'Value', 'What it means'],
+    ...summaryRows,
+  ])
+  summarySheet['!cols'] = [{ wch: 34 }, { wch: 14 }, { wch: 80 }]
+
+  summaryRows.forEach((row, index) => {
+    const cell = summarySheet[XLSX.utils.encode_cell({ r: index + 4, c: 1 })]
+    if (!cell || cell.t !== 'n') return
+    const label = String(row[0])
+    if (label === 'Returned on time' || label === 'Fleet utilization') cell.z = '0%'
+    if (label === 'MSRP value in the field') cell.z = numberFormats.usd
+  })
+  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary')
+
+  // ---------------------------------------------------------------- Open loans
+  tableSheet(
+    'Open loans',
+    'Open loans — sorted by urgency',
+    'Overdue first, then by expected return date. One row per loan.',
+    [
+      { header: 'Loan', width: 13 },
+      { header: 'Return status', width: 24 },
+      { header: 'Expected return', width: 15, format: 'date' },
+      { header: 'Client', width: 30 },
+      { header: 'Contact', width: 22 },
+      { header: 'Phone', width: 17 },
+      { header: 'Email', width: 30 },
+      { header: 'Internal owner', width: 20 },
+      { header: 'Delivered by', width: 20 },
+      { header: 'Destination', width: 20 },
+      { header: 'Checkout', width: 12, format: 'date' },
+      { header: 'Units out', width: 10, format: 'int' },
+      { header: 'Equipment still out', width: 60 },
+      { header: 'Picked up from', width: 26 },
+      { header: 'MSRP out', width: 13, format: 'usd' },
+    ],
+    report.openLoanRows.map((row) => [
+      row.code,
+      describeDaysLeft(row.daysLeft),
+      row.expectedReturnDate,
+      row.company,
+      row.contactName || null,
+      row.contactPhone || null,
+      row.contactEmail || null,
+      row.responsible,
+      row.checkoutHandler || null,
+      row.destination || null,
+      row.checkoutDate,
+      row.unitsOut,
+      row.equipmentOut,
+      row.pickupLocations || null,
+      row.msrpOut,
+    ]),
+  )
+
+  // ---------------------------------------------------------------- Equipment out
+  tableSheet(
+    'Equipment out',
+    'Equipment in the field — one row per unit',
+    'Every piece of equipment not yet returned, with its loan and where it was picked up from.',
+    [
+      { header: 'Equipment', width: 12 },
+      { header: 'Model', width: 28 },
+      { header: 'Category', width: 14 },
+      { header: 'Serial', width: 16 },
+      { header: 'Loan', width: 13 },
+      { header: 'Client', width: 30 },
+      { header: 'Internal owner', width: 20 },
+      { header: 'Expected return', width: 15, format: 'date' },
+      { header: 'Return status', width: 24 },
+      { header: 'Picked up from', width: 26 },
+      { header: 'MSRP', width: 12, format: 'usd' },
+    ],
+    report.equipmentOut.map((row) => [
+      row.equipmentCode,
+      row.model,
+      row.category,
+      row.serialNumber,
+      row.loanCode,
+      row.company,
+      row.responsible,
+      row.expectedReturnDate,
+      describeDaysLeft(row.daysLeft),
+      row.lastLocation || null,
+      row.msrp,
+    ]),
+  )
+
+  // ---------------------------------------------------------------- Rankings
+  const top = 15
+  const realRows = <T extends { label: string }>(rows: T[]) =>
+    rows.filter((row) => row.label !== 'Not registered').slice(0, top)
+
+  const rankingAoa: Cell[][] = [
+    [`Rankings — ${reportPeriodLabels[report.period]}`],
+    [`Top ${top} per list, by loans opened in the period  —  ${scopeLine}`],
+    [],
+  ]
+
+  function pushLoanRanking(title: string, labelHeader: string, rows: RankRow[]) {
+    rankingAoa.push([title], ['#', labelHeader, 'Loans', 'Units', 'Still open', 'Overdue'])
+    const data = realRows(rows)
+    if (data.length === 0) rankingAoa.push([null, 'No activity in this period'])
+    data.forEach((row, index) =>
+      rankingAoa.push([index + 1, row.label, row.loans, row.units, row.openNow, row.overdueNow]),
+    )
+    rankingAoa.push([])
+  }
+
+  function pushUnitRanking(title: string, labelHeader: string, rows: UnitRankRow[]) {
+    rankingAoa.push([title], ['#', labelHeader, 'Units lent', 'In loans'])
+    const data = realRows(rows)
+    if (data.length === 0) rankingAoa.push([null, 'No activity in this period'])
+    data.forEach((row, index) => rankingAoa.push([index + 1, row.label, row.units, row.loans]))
+    rankingAoa.push([])
+  }
+
+  pushLoanRanking('Clients receiving the most equipment', 'Client', report.byClient)
+  pushLoanRanking('Internal owners lending the most', 'Internal owner', report.byOwner)
+  pushUnitRanking('Most requested models', 'Model', report.byModel)
+
+  const rankingSheet = XLSX.utils.aoa_to_sheet(rankingAoa)
+  rankingSheet['!cols'] = [{ wch: 5 }, { wch: 40 }, { wch: 11 }, { wch: 11 }, { wch: 11 }, { wch: 10 }]
+  XLSX.utils.book_append_sheet(workbook, rankingSheet, 'Rankings')
+
+  // ---------------------------------------------------------------- Monthly trend
+  tableSheet(
+    'Monthly trend',
+    'Loans opened vs. closed — last 12 months',
+    'Opened by checkout month; closed by the month the loan was fully returned.',
+    [
+      { header: 'Month', width: 12 },
+      { header: 'Opened', width: 10, format: 'int' },
+      { header: 'Closed', width: 10, format: 'int' },
+      { header: 'Net change', width: 12, format: 'int' },
+    ],
+    report.monthlyTrend.map((row) => [row.label, row.opened, row.closed, row.opened - row.closed]),
+  )
+
+  // ---------------------------------------------------------------- Never loaned
+  if (report.idleEquipment.length > 0) {
+    tableSheet(
+      'Never loaned',
+      'Available equipment that has never been loaned',
+      'Candidates for demos, redeployment or review.',
+      [
+        { header: 'Equipment', width: 12 },
+        { header: 'Category', width: 14 },
+        { header: 'Model', width: 32 },
+        { header: 'Location', width: 26 },
+        { header: 'Acquired', width: 12 },
+      ],
+      report.idleEquipment.map((row) => [row.code, row.category, row.model, row.location, row.acquiredAt]),
+    )
+  }
+
   const stamp = report.generatedAt.toISOString().slice(0, 10)
-  XLSX.writeFile(workbook, `loans-report_${stamp}.xlsx`)
+  XLSX.writeFile(workbook, `Loans-Report_${stamp}.xlsx`, { cellDates: true })
 }

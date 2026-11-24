@@ -1,11 +1,11 @@
 export const internalContacts = [
   'Tamara Castro',
-  'Estivalía Sanchez',
+  'Merle Nuñez',
   'Mariano Vega',
   'Israel Soto',
   'Oswaldo Suescún',
   'Daniel Fuente',
-  'Cristian Aguilera',
+  'Maria Jose Muñoz',
   'Jimena Ginetti',
   'Nicolás Steck',
 ]

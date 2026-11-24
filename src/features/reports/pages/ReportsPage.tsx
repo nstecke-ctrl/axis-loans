@@ -166,12 +166,24 @@ export function ReportsPage() {
   const periodLabel = reportPeriodLabels[period]
   const { snapshot, fleet, activity } = report
 
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
+
   async function handleExport() {
     setIsExporting(true)
     try {
       await exportReportWorkbook(report, owner)
     } finally {
       setIsExporting(false)
+    }
+  }
+
+  async function handleExportPdf() {
+    setIsExportingPdf(true)
+    try {
+      const { generateReportPdf } = await import('../utils/generateReportPdf')
+      await generateReportPdf(report, owner)
+    } finally {
+      setIsExportingPdf(false)
     }
   }
 
@@ -221,6 +233,15 @@ export function ReportsPage() {
                 ))}
               </select>
             </label>
+
+            <button
+              type="button"
+              onClick={() => void handleExportPdf()}
+              disabled={isLoading || isExportingPdf || Boolean(loadError)}
+              className="inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl border border-[#d8d8d4] bg-white px-4 py-2.5 text-sm font-semibold text-[#171717] transition hover:border-[#bfbfba] hover:bg-[#fafaf8] disabled:cursor-not-allowed disabled:text-[#888888]"
+            >
+              {isExportingPdf ? 'Preparing PDF…' : 'Download PDF report'}
+            </button>
 
             <button
               type="button"

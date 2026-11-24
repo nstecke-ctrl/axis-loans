@@ -204,6 +204,39 @@ export type OverdueRow = {
   pendingMsrp: number | null
 }
 
+export type OpenLoanRow = {
+  code: string
+  status: LoanItem['status']
+  company: string
+  contactName: string
+  contactEmail: string
+  contactPhone: string
+  responsible: string
+  checkoutHandler: string
+  destination: string
+  checkoutDate: Date | null
+  expectedReturnDate: Date | null
+  daysLeft: number | null
+  unitsOut: number
+  equipmentOut: string
+  pickupLocations: string
+  msrpOut: number | null
+}
+
+export type EquipmentOutRow = {
+  equipmentCode: string
+  model: string
+  category: string
+  serialNumber: string
+  loanCode: string
+  company: string
+  responsible: string
+  expectedReturnDate: Date | null
+  daysLeft: number | null
+  lastLocation: string
+  msrp: number | null
+}
+
 export type PartialLoanRow = {
   code: string
   company: string
@@ -276,6 +309,8 @@ export type LoansReport = {
   }
 
   overdueAging: CountSlice[]
+  openLoanRows: OpenLoanRow[]
+  equipmentOut: EquipmentOutRow[]
   overdueLoans: OverdueRow[]
   partialLoans: PartialLoanRow[]
   idleEquipment: IdleEquipmentRow[]
@@ -424,6 +459,69 @@ export function buildLoansReport(input: {
       }
     })
     .sort((a, b) => b.daysOverdue - a.daysOverdue)
+
+  const openLoanRows: OpenLoanRow[] = []
+  const equipmentOutRows: EquipmentOutRow[] = []
+
+  for (const loan of openLoans) {
+    const expected = parseDisplayDate(loan.expectedReturnDate)
+    const daysLeft = expected ? daysBetween(today, expected) : null
+    const pending = loan.equipment.filter((item) => item.itemStatus === 'On Loan')
+    let loanMsrp = 0
+    let pricedCount = 0
+
+    for (const item of pending) {
+      const price = priceOf(item.equipmentCode)
+      if (price !== null) {
+        loanMsrp += price
+        pricedCount += 1
+      }
+
+      equipmentOutRows.push({
+        equipmentCode: item.equipmentCode,
+        model: item.model,
+        category: item.category,
+        serialNumber: item.serialNumber,
+        loanCode: loan.code,
+        company: loan.company,
+        responsible: loan.responsible,
+        expectedReturnDate: expected,
+        daysLeft,
+        lastLocation: item.lastLocation ?? item.currentLocation ?? '',
+        msrp: price,
+      })
+    }
+
+    openLoanRows.push({
+      code: loan.code,
+      status: loan.status,
+      company: loan.company,
+      contactName: loan.contactName,
+      contactEmail: loan.contactEmail,
+      contactPhone: loan.contactPhone,
+      responsible: loan.responsible,
+      checkoutHandler: loan.checkoutHandler,
+      destination: [loan.city, loan.country].filter(Boolean).join(', '),
+      checkoutDate: parseDisplayDate(loan.checkoutDate),
+      expectedReturnDate: expected,
+      daysLeft,
+      unitsOut: pending.length,
+      equipmentOut: pending.map((item) => item.model).join(', '),
+      pickupLocations: [
+        ...new Set(
+          pending
+            .map((item) => item.lastLocation ?? item.currentLocation)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ].join(', '),
+      msrpOut: pricedCount > 0 ? loanMsrp : null,
+    })
+  }
+
+  const byUrgency = (a: { daysLeft: number | null }, b: { daysLeft: number | null }) =>
+    (a.daysLeft ?? Number.POSITIVE_INFINITY) - (b.daysLeft ?? Number.POSITIVE_INFINITY)
+  openLoanRows.sort(byUrgency)
+  equipmentOutRows.sort((a, b) => byUrgency(a, b) || a.loanCode.localeCompare(b.loanCode))
 
   const overdueAging: CountSlice[] = agingBuckets.map((bucket, index) => {
     const min = index === 0 ? 0 : agingBuckets[index - 1].max + 1
@@ -597,6 +695,8 @@ export function buildLoansReport(input: {
     },
 
     overdueAging,
+    openLoanRows,
+    equipmentOut: equipmentOutRows,
     overdueLoans: overdueRows,
     partialLoans,
     idleEquipment,
