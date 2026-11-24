@@ -4,6 +4,7 @@ import { useRef, useState, type MouseEvent, type ReactNode } from 'react'
 export const chartTokens = {
   series1: '#2a78d6',
   series2: '#eb6834',
+  series3: '#1baf7a',
   good: '#0ca30c',
   warning: '#fab219',
   serious: '#ec835a',
@@ -136,14 +137,22 @@ export function StatTile({
 // Segmented status bar (part-to-whole, ≤ 4 segments, legend with counts)
 // ---------------------------------------------------------------------------
 
-export type Segment = { label: string; value: number; tone: StatusTone }
+export type Segment = {
+  label: string
+  value: number
+  tone: StatusTone
+  /** Categorical color for non-status parts; legend then shows a swatch, not a status icon. */
+  color?: string
+}
 
 export function SegmentedBar({
   segments,
   emptyLabel = 'No data in this view.',
+  formatValue = (value: number) => `${value}`,
 }: {
   segments: Segment[]
   emptyLabel?: string
+  formatValue?: (value: number) => string
 }) {
   const { containerRef, show, hide, node } = useChartTooltip()
   const total = segments.reduce((sum, segment) => sum + segment.value, 0)
@@ -164,15 +173,15 @@ export function SegmentedBar({
             style={{
               flexGrow: segment.value,
               flexBasis: 0,
-              backgroundColor: chartTokens[segment.tone],
+              backgroundColor: segment.color ?? chartTokens[segment.tone],
             }}
             onMouseMove={(event) =>
               show(
                 event,
                 <TooltipLine
-                  color={chartTokens[segment.tone]}
+                  color={segment.color ?? chartTokens[segment.tone]}
                   label={segment.label}
-                  value={`${segment.value} · ${Math.round((segment.value / total) * 100)}%`}
+                  value={`${formatValue(segment.value)} · ${Math.round((segment.value / total) * 100)}%`}
                 />,
               )
             }
@@ -184,10 +193,18 @@ export function SegmentedBar({
       <ul className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
         {segments.map((segment) => (
           <li key={segment.label} className="flex items-center gap-2 text-sm">
-            <StatusDot tone={segment.tone} />
+            {segment.color ? (
+              <span
+                aria-hidden="true"
+                className="inline-block h-3 w-3 shrink-0 rounded-sm"
+                style={{ backgroundColor: segment.color }}
+              />
+            ) : (
+              <StatusDot tone={segment.tone} />
+            )}
             <span className="text-[#555555]">{segment.label}</span>
             <span className="font-semibold tabular-nums text-[#171717]">
-              {segment.value}
+              {formatValue(segment.value)}
             </span>
             <span className="tabular-nums text-[#777777]">
               ({Math.round((segment.value / total) * 100)}%)
@@ -218,12 +235,14 @@ export function RankedBarList({
   limit = 8,
   color = chartTokens.series1,
   emptyLabel = 'No activity in this period.',
+  formatValue = (value: number) => `${value}`,
 }: {
   items: RankedItem[]
   valueLabel: string
   limit?: number
   color?: string
   emptyLabel?: string
+  formatValue?: (value: number) => string
 }) {
   const { containerRef, show, hide, node } = useChartTooltip()
 
@@ -248,7 +267,7 @@ export function RankedBarList({
                 event,
                 <>
                   <p className="mb-1 font-semibold">{item.label}</p>
-                  <TooltipLine color={color} label={valueLabel} value={item.value} />
+                  <TooltipLine color={color} label={valueLabel} value={formatValue(item.value)} />
                   {item.tooltip?.map((line) => (
                     <TooltipLine key={line.label} label={line.label} value={line.value} />
                   ))}
@@ -270,7 +289,7 @@ export function RankedBarList({
               />
             </span>
             <span className="min-w-12 text-right text-sm tabular-nums">
-              <span className="font-semibold text-[#171717]">{item.value}</span>
+              <span className="font-semibold text-[#171717]">{formatValue(item.value)}</span>
               {item.secondary && (
                 <span className="ml-1.5 text-xs text-[#777777]">{item.secondary}</span>
               )}
@@ -281,7 +300,7 @@ export function RankedBarList({
 
       {hidden.length > 0 && (
         <p className="mt-2 px-2 text-xs text-[#777777]">
-          + {hidden.length} more · {hiddenTotal} {valueLabel.toLowerCase()}
+          + {hidden.length} more · {formatValue(hiddenTotal)} {valueLabel.toLowerCase()}
         </p>
       )}
 

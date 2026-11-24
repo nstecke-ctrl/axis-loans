@@ -80,7 +80,7 @@ export async function exportReportWorkbook(report: LoansReport, owner: string) {
   }
 
   // ---------------------------------------------------------------- Summary
-  const { snapshot, fleet, activity } = report
+  const { snapshot, fleet, activity, value } = report
   const percentOrDash = (value: number | null) => (value === null ? '—' : value)
   const daysOrDash = (value: number | null) => (value === null ? '—' : Math.round(value))
 
@@ -112,6 +112,24 @@ export async function exportReportWorkbook(report: LoansReport, owner: string) {
     ['Returned on time', percentOrDash(activity.onTimeRate), `${activity.closedOnTime} on time, ${activity.closedLate} late.`],
     ['Average loan length (days)', daysOrDash(activity.avgDurationDays), 'From checkout to full return, closed loans only.'],
     [null, null, null],
+    ['INVENTORY VALUE — Axis MSRP, active products only', null, null],
+    ['Active inventory value', Math.round(value.active.msrp), `${value.active.units} units whose part number is in the current Axis pricelist.`],
+    ['In the warehouse', Math.round(value.warehouse.msrp), `${value.warehouse.units} units available or reserved.`],
+    ['On loan', Math.round(value.onLoan.msrp), `${value.onLoan.units} units in the field.`],
+    ['Share of lendable value on loan', percentOrDash(value.onLoanShare), 'On loan ÷ (warehouse + on loan).'],
+    ['Overdue value', Math.round(value.overdue.msrp), `${value.overdue.units} units on loans past their return date.`],
+    ['Under review / damaged', Math.round(value.notLendable.msrp), `${value.notLendable.units} units not available to lend.`],
+    ['Idle capital (never loaned)', Math.round(value.idle.msrp), `${value.idle.units} available units that have never left the warehouse.`],
+    ['Discontinued units', value.discontinued.units, `Not in the current pricelist: ${value.discontinued.inWarehouse} in warehouse, ${value.discontinued.onLoan} on loan, ${value.discontinued.notLendable} under review/damaged.`],
+    ...(value.discontinued.unitsWithLastKnownPrice > 0
+      ? [[
+          'Discontinued — last known MSRP',
+          Math.round(value.discontinued.lastKnownMsrp),
+          `Price found in past loan requests for ${value.discontinued.unitsWithLastKnownPrice} of ${value.discontinued.units} discontinued units.`,
+        ] as Cell[]]
+      : []),
+    ['Units without part number', value.missingPartNumber, 'Cannot be valued — complete the part number in Inventory.'],
+    [null, null, null],
     ['FLEET — whole inventory', null, null],
     ['Total equipment', fleet.total, null],
     ['Available in warehouse', fleet.available, null],
@@ -134,8 +152,19 @@ export async function exportReportWorkbook(report: LoansReport, owner: string) {
     const cell = summarySheet[XLSX.utils.encode_cell({ r: index + 4, c: 1 })]
     if (!cell || cell.t !== 'n') return
     const label = String(row[0])
-    if (label === 'Returned on time' || label === 'Fleet utilization') cell.z = '0%'
-    if (label === 'MSRP value in the field') cell.z = numberFormats.usd
+    const percentRows = ['Returned on time', 'Fleet utilization', 'Share of lendable value on loan']
+    const usdRows = [
+      'MSRP value in the field',
+      'Active inventory value',
+      'In the warehouse',
+      'On loan',
+      'Overdue value',
+      'Under review / damaged',
+      'Idle capital (never loaned)',
+      'Discontinued — last known MSRP',
+    ]
+    if (percentRows.includes(label)) cell.z = '0%'
+    if (usdRows.includes(label)) cell.z = numberFormats.usd
   })
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary')
 
@@ -249,6 +278,43 @@ export async function exportReportWorkbook(report: LoansReport, owner: string) {
   const rankingSheet = XLSX.utils.aoa_to_sheet(rankingAoa)
   rankingSheet['!cols'] = [{ wch: 5 }, { wch: 40 }, { wch: 11 }, { wch: 11 }, { wch: 11 }, { wch: 10 }]
   XLSX.utils.book_append_sheet(workbook, rankingSheet, 'Rankings')
+
+  // ---------------------------------------------------------------- Value
+  const valueAoa: Cell[][] = [
+    ['Inventory value — Axis MSRP (active products)'],
+    [`Who holds the value and where it sits  —  ${scopeLine}`],
+    [],
+  ]
+  const usdCells: Array<[number, number]> = []
+
+  function pushValueBlock(title: string, labelHeader: string, rows: Array<{ label: string; msrp: number; units: number }>) {
+    valueAoa.push([title], ['#', labelHeader, 'MSRP (USD)', 'Units'])
+    if (rows.length === 0) valueAoa.push([null, 'No priced equipment'])
+    rows.slice(0, top).forEach((row, index) => {
+      usdCells.push([valueAoa.length, 2])
+      valueAoa.push([index + 1, row.label, Math.round(row.msrp), row.units])
+    })
+    valueAoa.push([])
+  }
+
+  pushValueBlock('Value held by client (on loan now)', 'Client', value.byClient)
+  pushValueBlock('Value on loan by internal owner', 'Internal owner', value.byOwner)
+  pushValueBlock('Active inventory value by category', 'Category', value.byCategory)
+
+  valueAoa.push(['Most valuable units in the field'], ['#', 'Equipment', 'MSRP (USD)', 'Model', 'Client', 'Loan', 'Return status'])
+  if (value.mostValuableOut.length === 0) valueAoa.push([null, 'No priced equipment on loan'])
+  value.mostValuableOut.forEach((row, index) => {
+    usdCells.push([valueAoa.length, 2])
+    valueAoa.push([index + 1, row.equipmentCode, Math.round(row.msrp), row.model, row.company, row.loanCode, describeDaysLeft(row.daysLeft)])
+  })
+
+  const valueSheet = XLSX.utils.aoa_to_sheet(valueAoa)
+  valueSheet['!cols'] = [{ wch: 5 }, { wch: 36 }, { wch: 14 }, { wch: 28 }, { wch: 28 }, { wch: 13 }, { wch: 22 }]
+  for (const [r, c] of usdCells) {
+    const cell = valueSheet[XLSX.utils.encode_cell({ r, c })]
+    if (cell) cell.z = numberFormats.usd
+  }
+  XLSX.utils.book_append_sheet(workbook, valueSheet, 'Value (MSRP)')
 
   // ---------------------------------------------------------------- Monthly trend
   tableSheet(

@@ -114,7 +114,7 @@ export async function generateReportPdf(report: LoansReport, owner: string) {
   }
 
   // ------------------------------------------------------------- KPI grid
-  const { snapshot, activity, fleet } = report
+  const { snapshot, activity, fleet, value } = report
   const pct = (value: number | null) => (value === null ? '—' : `${Math.round(value * 100)}%`)
   const days = (value: number | null) => (value === null ? '—' : `${Math.round(value)} days`)
 
@@ -162,6 +162,36 @@ export async function generateReportPdf(report: LoansReport, owner: string) {
     { label: 'Returned on time', value: pct(activity.onTimeRate), note: `${activity.closedOnTime} of ${activity.closedOnTime + activity.closedLate} closed` },
     { label: 'Avg. loan length', value: days(activity.avgDurationDays), note: 'Checkout to full return' },
     { label: 'Fleet utilization', value: pct(fleet.utilization), note: `${fleet.onLoan} of ${fleet.total - fleet.damaged} units` },
+  ])
+
+  const usdCompact = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  })
+
+  kpiRow('Inventory value · Axis MSRP, active products', [
+    { label: 'In the warehouse', value: usdCompact.format(value.warehouse.msrp), note: `${value.warehouse.units} units` },
+    {
+      label: 'On loan',
+      value: usdCompact.format(value.onLoan.msrp),
+      note: value.onLoanShare === null ? `${value.onLoan.units} units` : `${value.onLoan.units} units · ${pct(value.onLoanShare)} of lendable`,
+    },
+    {
+      label: 'Overdue value',
+      value: usdCompact.format(value.overdue.msrp),
+      note: `${value.overdue.units} units`,
+      color: value.overdue.msrp > 0 ? critical : ink,
+    },
+    {
+      label: 'Discontinued',
+      value: `${value.discontinued.units} units`,
+      note:
+        value.discontinued.unitsWithLastKnownPrice > 0
+          ? `${usdCompact.format(value.discontinued.lastKnownMsrp)} last known`
+          : 'Not in current pricelist',
+    },
   ])
 
   // ------------------------------------------------------------- tables
@@ -248,6 +278,15 @@ export async function generateReportPdf(report: LoansReport, owner: string) {
     columnStyles: { 1: { halign: 'right', cellWidth: 36 }, 2: { halign: 'right', cellWidth: 36 } },
   })
   y = Math.max(leftEnd, lastTableY(doc, startY)) + 26
+
+  if (value.byClient.length > 0) {
+    sectionTitle('Value held by client', 'MSRP of equipment each client has right now (active products).')
+    table(
+      ['Client', 'Units', 'MSRP'],
+      value.byClient.slice(0, 10).map((row) => [row.label, `${row.units}`, usd.format(row.msrp)]),
+      { 1: { halign: 'right', cellWidth: 50 }, 2: { halign: 'right', cellWidth: 80 } },
+    )
+  }
 
   sectionTitle('Most requested models')
   table(

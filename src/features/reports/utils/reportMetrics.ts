@@ -268,6 +268,52 @@ export type CountSlice = {
   value: number
 }
 
+export type ValueBucket = {
+  units: number
+  msrp: number
+}
+
+export type ValueRankRow = {
+  label: string
+  msrp: number
+  units: number
+}
+
+export type ValuableUnitRow = {
+  equipmentCode: string
+  model: string
+  loanCode: string
+  company: string
+  responsible: string
+  daysLeft: number | null
+  msrp: number
+}
+
+export type InventoryValue = {
+  /** Units whose part number is in the current Axis pricelist. */
+  active: ValueBucket
+  warehouse: ValueBucket
+  onLoan: ValueBucket
+  overdue: ValueBucket
+  notLendable: ValueBucket
+  idle: ValueBucket
+  /** Share of lendable active value currently out on loan. */
+  onLoanShare: number | null
+  discontinued: {
+    units: number
+    inWarehouse: number
+    onLoan: number
+    notLendable: number
+    lastKnownMsrp: number
+    unitsWithLastKnownPrice: number
+  }
+  missingPartNumber: number
+  byCategory: ValueRankRow[]
+  byClient: ValueRankRow[]
+  byOwner: ValueRankRow[]
+  mostValuableOut: ValuableUnitRow[]
+}
+
 export type LoansReport = {
   generatedAt: Date
   period: ReportPeriod
@@ -283,6 +329,8 @@ export type LoansReport = {
     msrpOut: number
     pricedUnitsOut: number
   }
+
+  value: InventoryValue
 
   fleet: {
     total: number
@@ -573,6 +621,139 @@ export function buildLoansReport(input: {
     }))
     .sort((a, b) => a.code.localeCompare(b.code))
 
+  // --- Inventory value (MSRP) ----------------------------------------------
+  // "Active" = part number present in the current Axis pricelist.
+  // Anything else is treated as discontinued / not currently sold; its value
+  // is only reported at a last known price taken from past loan requests.
+  const historicalPrices = new Map<string, number>()
+  for (const request of input.requests) {
+    for (const item of request.items) {
+      const partNumber = normalizePartNumber(item.partNumber)
+      if (partNumber && item.msrpUnit > 0 && !input.priceLookup.has(partNumber)) {
+        historicalPrices.set(partNumber, item.msrpUnit)
+      }
+    }
+  }
+
+  const emptyBucket = (): ValueBucket => ({ units: 0, msrp: 0 })
+  const value: InventoryValue = {
+    active: emptyBucket(),
+    warehouse: emptyBucket(),
+    onLoan: emptyBucket(),
+    overdue: emptyBucket(),
+    notLendable: emptyBucket(),
+    idle: emptyBucket(),
+    onLoanShare: null,
+    discontinued: {
+      units: 0,
+      inWarehouse: 0,
+      onLoan: 0,
+      notLendable: 0,
+      lastKnownMsrp: 0,
+      unitsWithLastKnownPrice: 0,
+    },
+    missingPartNumber: 0,
+    byCategory: [],
+    byClient: [],
+    byOwner: [],
+    mostValuableOut: [],
+  }
+
+  const addTo = (bucket: ValueBucket, msrp: number) => {
+    bucket.units += 1
+    bucket.msrp += msrp
+  }
+  const categoryValue = new Map<string, ValueRankRow>()
+
+  for (const item of input.equipment) {
+    const partNumber = normalizePartNumber(item.partNumber)
+
+    if (!partNumber || partNumber === 'NOTREGISTERED' || partNumber === 'N/A') {
+      value.missingPartNumber += 1
+      continue
+    }
+
+    const msrp = input.priceLookup.get(partNumber)
+    const isLendable = item.status === 'Available' || item.status === 'Reserved'
+    const isOut = item.status === 'On Loan'
+
+    if (msrp === undefined) {
+      const discontinued = value.discontinued
+      discontinued.units += 1
+      if (isLendable) discontinued.inWarehouse += 1
+      else if (isOut) discontinued.onLoan += 1
+      else discontinued.notLendable += 1
+
+      const lastKnown = historicalPrices.get(partNumber)
+      if (lastKnown !== undefined) {
+        discontinued.lastKnownMsrp += lastKnown
+        discontinued.unitsWithLastKnownPrice += 1
+      }
+      continue
+    }
+
+    addTo(value.active, msrp)
+    if (isLendable) addTo(value.warehouse, msrp)
+    else if (isOut) addTo(value.onLoan, msrp)
+    else addTo(value.notLendable, msrp)
+
+    if (item.status === 'Available' && !loanedCodes.has(item.code)) {
+      addTo(value.idle, msrp)
+    }
+
+    const category = item.category?.trim() || 'Not registered'
+    const row = categoryValue.get(category) ?? { label: category, msrp: 0, units: 0 }
+    row.msrp += msrp
+    row.units += 1
+    categoryValue.set(category, row)
+  }
+
+  const lendableValue = value.warehouse.msrp + value.onLoan.msrp
+  value.onLoanShare = lendableValue > 0 ? value.onLoan.msrp / lendableValue : null
+  value.byCategory = [...categoryValue.values()].sort((a, b) => b.msrp - a.msrp)
+
+  // Exposure: value currently held per client / owner (respects owner filter).
+  const clientValue = new Map<string, ValueRankRow>()
+  const ownerValue = new Map<string, ValueRankRow>()
+  const valuableUnits: ValuableUnitRow[] = []
+
+  for (const loan of openLoans) {
+    const expected = parseDisplayDate(loan.expectedReturnDate)
+    const daysLeft = expected ? daysBetween(today, expected) : null
+
+    for (const item of loan.equipment) {
+      if (item.itemStatus !== 'On Loan') continue
+      const msrp = priceOf(item.equipmentCode)
+      if (msrp === null) continue
+
+      if (loan.status === 'Overdue') addTo(value.overdue, msrp)
+
+      for (const [map, label] of [
+        [clientValue, loan.company],
+        [ownerValue, loan.responsible],
+      ] as const) {
+        const row = map.get(label) ?? { label, msrp: 0, units: 0 }
+        row.msrp += msrp
+        row.units += 1
+        map.set(label, row)
+      }
+
+      valuableUnits.push({
+        equipmentCode: item.equipmentCode,
+        model: item.model,
+        loanCode: loan.code,
+        company: loan.company,
+        responsible: loan.responsible,
+        daysLeft,
+        msrp,
+      })
+    }
+  }
+
+  value.byClient = [...clientValue.values()].sort((a, b) => b.msrp - a.msrp)
+  value.byOwner = [...ownerValue.values()].sort((a, b) => b.msrp - a.msrp)
+  value.mostValuableOut = valuableUnits.sort((a, b) => b.msrp - a.msrp).slice(0, 10)
+
   // --- Activity in the selected period ------------------------------------
   const periodLoans = scopedLoans.filter((loan) =>
     isInPeriod(loan.checkoutDate, periodStart),
@@ -669,6 +850,8 @@ export function buildLoansReport(input: {
       msrpOut,
       pricedUnitsOut,
     },
+
+    value,
 
     fleet: {
       total: input.equipment.length,

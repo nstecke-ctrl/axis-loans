@@ -15,7 +15,7 @@ import {
   chartTokens,
   type RankedItem,
 } from '../components/ReportCharts'
-import { exportReportWorkbook } from '../utils/exportReportWorkbook'
+import { describeDaysLeft, exportReportWorkbook } from '../utils/exportReportWorkbook'
 import {
   buildLoansReport,
   buildPriceLookup,
@@ -164,7 +164,7 @@ export function ReportsPage() {
   )
 
   const periodLabel = reportPeriodLabels[period]
-  const { snapshot, fleet, activity } = report
+  const { snapshot, fleet, activity, value } = report
 
   const [isExportingPdf, setIsExportingPdf] = useState(false)
 
@@ -398,6 +398,141 @@ export function ReportsPage() {
             {/* ------------------------------------------------------------- */}
             <div>
               <SectionTitle
+                title="Inventory value (MSRP)"
+                note="Axis list price, active products only — inventory is global; client and owner exposure follow the owner filter"
+              />
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <StatTile
+                  label="In the warehouse"
+                  value={usdCompactFormatter.format(value.warehouse.msrp)}
+                  detail={`${value.warehouse.units} active units ready to lend`}
+                />
+                <StatTile
+                  label="On loan"
+                  value={usdCompactFormatter.format(value.onLoan.msrp)}
+                  detail={
+                    value.onLoanShare === null
+                      ? `${value.onLoan.units} units`
+                      : `${value.onLoan.units} units · ${formatPercent(value.onLoanShare)} of lendable value`
+                  }
+                />
+                <StatTile
+                  label="Overdue value"
+                  tone={value.overdue.msrp > 0 ? 'critical' : 'good'}
+                  value={usdCompactFormatter.format(value.overdue.msrp)}
+                  detail={`${value.overdue.units} units past their return date`}
+                />
+                <StatTile
+                  label="Idle capital"
+                  value={usdCompactFormatter.format(value.idle.msrp)}
+                  detail={`${value.idle.units} available units never loaned`}
+                />
+                <StatTile
+                  label="Discontinued"
+                  tone="neutral"
+                  value={`${value.discontinued.units} units`}
+                  detail={
+                    value.discontinued.unitsWithLastKnownPrice > 0
+                      ? `Not in current pricelist · ${usdCompactFormatter.format(value.discontinued.lastKnownMsrp)} at last known price (${value.discontinued.unitsWithLastKnownPrice} units)`
+                      : 'Not in the current pricelist · no current list price'
+                  }
+                />
+              </div>
+
+              <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                <ReportCard
+                  title={`Where the value is · ${usdFormatter.format(value.active.msrp)}`}
+                  description={`${value.active.units} active units in inventory, by status.`}
+                >
+                  <SegmentedBar
+                    emptyLabel="No inventory matched the current pricelist."
+                    formatValue={(amount) => usdCompactFormatter.format(amount)}
+                    segments={[
+                      { label: 'Warehouse', value: value.warehouse.msrp, tone: 'neutral', color: chartTokens.series1 },
+                      { label: 'On loan', value: value.onLoan.msrp, tone: 'neutral', color: chartTokens.series2 },
+                      { label: 'Under review / damaged', value: value.notLendable.msrp, tone: 'neutral', color: chartTokens.series3 },
+                    ]}
+                  />
+
+                  <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-[#ecece8] pt-5 text-sm md:grid-cols-4">
+                    <ValueFact label="Discontinued in warehouse" value={`${value.discontinued.inWarehouse}`} />
+                    <ValueFact label="Discontinued on loan" value={`${value.discontinued.onLoan}`} />
+                    <ValueFact label="Discontinued, review / damaged" value={`${value.discontinued.notLendable}`} />
+                    <ValueFact label="No part number" value={`${value.missingPartNumber}`} />
+                  </dl>
+                </ReportCard>
+
+                <ReportCard title="Value by category" description="Active inventory MSRP per equipment category.">
+                  <RankedBarList
+                    valueLabel="MSRP"
+                    formatValue={(amount) => usdCompactFormatter.format(amount)}
+                    emptyLabel="No priced inventory."
+                    items={value.byCategory.map((row) => ({
+                      label: row.label,
+                      value: row.msrp,
+                      secondary: `${row.units} u`,
+                      tooltip: [{ label: 'Units', value: row.units }],
+                    }))}
+                  />
+                </ReportCard>
+
+                <ReportCard title="Value held by client" description="MSRP of equipment each client has right now.">
+                  <RankedBarList
+                    valueLabel="MSRP"
+                    formatValue={(amount) => usdCompactFormatter.format(amount)}
+                    emptyLabel="No priced equipment on loan."
+                    items={value.byClient.map((row) => ({
+                      label: row.label,
+                      value: row.msrp,
+                      secondary: `${row.units} u`,
+                      tooltip: [{ label: 'Units', value: row.units }],
+                    }))}
+                  />
+                </ReportCard>
+
+                <ReportCard title="Value on loan by owner" description="MSRP each internal owner has in the field.">
+                  <RankedBarList
+                    valueLabel="MSRP"
+                    formatValue={(amount) => usdCompactFormatter.format(amount)}
+                    emptyLabel="No priced equipment on loan."
+                    items={value.byOwner.map((row) => ({
+                      label: row.label,
+                      value: row.msrp,
+                      secondary: `${row.units} u`,
+                      tooltip: [{ label: 'Units', value: row.units }],
+                    }))}
+                  />
+                </ReportCard>
+              </div>
+
+              <ReportCard
+                className="mt-4"
+                title="Most valuable units in the field"
+                description="Top 10 active units on loan by list price."
+              >
+                <SimpleTable
+                  emptyLabel="No priced equipment on loan."
+                  headers={['Equipment', 'Model', 'Client', 'Loan', 'Return status', 'MSRP']}
+                  rows={value.mostValuableOut.map((row) => [
+                    <Link key="e" to={`/inventory/${row.equipmentCode}`} className="font-semibold text-[#171717] hover:underline">
+                      {row.equipmentCode}
+                    </Link>,
+                    row.model,
+                    row.company,
+                    <LoanLink key="l" code={row.loanCode} />,
+                    <span key="s" className={row.daysLeft !== null && row.daysLeft < 0 ? 'font-semibold text-[#b42318]' : ''}>
+                      {describeDaysLeft(row.daysLeft)}
+                    </span>,
+                    <span key="m" className="font-semibold text-[#171717]">{usdFormatter.format(row.msrp)}</span>,
+                  ])}
+                />
+              </ReportCard>
+            </div>
+
+            {/* ------------------------------------------------------------- */}
+            <div>
+              <SectionTitle
                 title={`Activity · ${periodLabel}`}
                 note="Loans counted by checkout date; returns by close date"
               />
@@ -561,6 +696,15 @@ export function ReportsPage() {
         )}
       </section>
     </>
+  )
+}
+
+function ValueFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-[#777777]">{label}</dt>
+      <dd className="mt-0.5 font-semibold tabular-nums text-[#171717]">{value}</dd>
+    </div>
   )
 }
 
